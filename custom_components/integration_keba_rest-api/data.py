@@ -1,4 +1,4 @@
-"""Custom types for integration_blueprint."""
+"""Custom types for integration_keba_rest-api."""
 
 from __future__ import annotations
 
@@ -9,17 +9,17 @@ if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.loader import Integration
 
-    from .api import IntegrationBlueprintApiClient
+    from .api import KebaRestIntegrationApiClient
     from .coordinator import BlueprintDataUpdateCoordinator
 
 
-type IntegrationBlueprintConfigEntry = ConfigEntry[IntegrationBlueprintData]
+type KebaRestIntegrationConfigEntry = ConfigEntry[KebaRestIntegrationData]
 
 
 @dataclass
-class IntegrationBlueprintData:
+class KebaRestIntegrationData:
     """Data for the Blueprint integration."""
 
-    client: IntegrationBlueprintApiClient
+    client: KebaRestIntegrationApiClient
     coordinator: BlueprintDataUpdateCoordinator
     integration: Integration

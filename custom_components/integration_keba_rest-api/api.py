@@ -1,0 +1,213 @@
+"""Sample API Client."""
+
+from __future__ import annotations
+
+import socket
+from typing import Any
+
+import aiohttp
+import async_timeout
+
+
+class KebaRestIntegrationApiClientError(Exception):
+    """Exception to indicate a general API error."""
+
+
+class KebaRestIntegrationApiClientCommunicationError(
+    KebaRestIntegrationApiClientError,
+):
+    """Exception to indicate a communication error."""
+
+
+class KebaRestIntegrationApiClientAuthenticationError(
+    KebaRestIntegrationApiClientError,
+):
+    """Exception to indicate an authentication error."""
+
+
+def _verify_response_or_raise(response: aiohttp.ClientResponse) -> None:
+    """Verify that the response is valid."""
+    if response.status in (401, 403):
+        msg = "Invalid credentials"
+        raise KebaRestIntegrationApiClientAuthenticationError(
+            msg,
+        )
+    response.raise_for_status()
+
+
+class KebaRestIntegrationApiClient:
+    """Sample API Client with JWT support for login and refresh."""
+
+    def __init__(
+        self,
+        url: str,
+        username: str,
+        password: str,
+        session: aiohttp.ClientSession,
+    ) -> None:
+        """Sample API Client."""
+        self._url = url.removesuffix("/")
+        self._username = username
+        self._password = password
+        self._session = session
+
+        # Tokens obtained via /v2/jwt/login and /v2/jwt/refresh
+        self._access_token: str | None = None
+        self._refresh_token: str | None = None
+
+    async def async_get_data(self) -> Any:
+        """Get data from the API using the access token if available."""
+        return await self._api_wrapper(
+            method="get",
+            url=self._url + "/posts/1",
+        )
+
+    async def async_set_title(self, value: str) -> Any:
+        """Set data on the API using the access token if available."""
+        return await self._api_wrapper(
+            method="patch",
+            url=self._url + "/posts/1",
+            data={"title": value},
+            headers={"Content-type": "application/json; charset=UTF-8"},
+        )
+
+    async def async_login_jwt(
+        self, username: str | None = None, password: str | None = None
+    ) -> dict:
+        """
+        Login with username/password and store access and refresh tokens.
+
+        If username/password are not provided, falls back to values given at init.
+        Raises KebaRestIntegrationApiClientAuthenticationError on auth failure.
+        Returns a dict with 'access_token' and 'refresh_token'.
+        """
+        body = {
+            "username": username or self._username,
+            "password": password or self._password,
+        }
+        resp = await self._api_wrapper(
+            method="post",
+            url=self._url + "/v2/jwt/login",
+            data=body,
+            include_auth=False,
+        )
+
+        # Expect access_token and refresh_token in response
+        access = resp.get("access_token") if isinstance(resp, dict) else None
+        refresh = resp.get("refresh_token") if isinstance(resp, dict) else None
+        if not access or not refresh:
+            msg = "Login did not return access_token and refresh_token"
+            raise KebaRestIntegrationApiClientAuthenticationError(msg)
+
+        self._access_token = access
+        self._refresh_token = refresh
+        return {"access_token": access, "refresh_token": refresh}
+
+    def set_refresh_token(self, token: str | None) -> None:
+        """Set the refresh token on the client (used when loading persisted token)."""
+        self._refresh_token = token
+
+    def get_refresh_token(self) -> str | None:
+        """Get currently stored refresh token (may be None)."""
+        return self._refresh_token
+
+    async def async_refresh_jwt(self) -> str:
+        """Refresh the access token using the stored refresh token.
+
+        Returns the new access token. Raises KebaRestIntegrationApiClientError
+        if no refresh token is available or the refresh fails.
+        """
+        if not self._refresh_token:
+            raise KebaRestIntegrationApiClientError("No refresh token available")
+
+        headers = {"Authorization": f"Bearer {self._refresh_token}"}
+        resp = await self._api_wrapper(
+            method="post",
+            url=self._url + "/v2/jwt/refresh",
+            headers=headers,
+            include_auth=False,
+        )
+
+        access = resp.get("access_token") if isinstance(resp, dict) else None
+        if not access:
+            raise KebaRestIntegrationApiClientError(
+                "Refresh did not return new access_token"
+            )
+
+        self._access_token = access
+        return access
+
+    async def _api_wrapper(
+        self,
+        method: str,
+        url: str,
+        data: dict | None = None,
+        headers: dict | None = None,
+        include_auth: bool = True,
+    ) -> Any:
+        """Get information from the API.
+
+        Adds Authorization header automatically if an access token is present
+        and include_auth is True. For login and refresh calls, callers should
+        set include_auth=False so we do not attach an access token.
+        """
+        try:
+            async with async_timeout.timeout(10):
+                req_headers = dict(headers or {})
+                if (
+                    include_auth
+                    and self._access_token
+                    and "Authorization" not in req_headers
+                ):
+                    req_headers["Authorization"] = f"Bearer {self._access_token}"
+
+                response = await self._session.request(
+                    method=method,
+                    url=url,
+                    headers=req_headers,
+                    json=data,
+                )
+                _verify_response_or_raise(response)
+                return await response.json()
+
+        except TimeoutError as exception:
+            msg = f"Timeout error fetching information - {exception}"
+            raise KebaRestIntegrationApiClientCommunicationError(
+                msg,
+            ) from exception
+        except (aiohttp.ClientError, socket.gaierror) as exception:
+            msg = f"Error fetching information - {exception}"
+            raise KebaRestIntegrationApiClientCommunicationError(
+                msg,
+            ) from exception
+        except KebaRestIntegrationApiClientAuthenticationError:
+            # If we have a refresh token, attempt to refresh and retry the request once
+            if include_auth and self._refresh_token:
+                try:
+                    await self.async_refresh_jwt()
+                except KebaRestIntegrationApiClientError:
+                    # Refresh failed, re-raise the original auth error
+                    raise
+
+                # Retry the original request with refreshed access token
+                async with async_timeout.timeout(10):
+                    req_headers = dict(headers or {})
+                    if self._access_token and "Authorization" not in req_headers:
+                        req_headers["Authorization"] = f"Bearer {self._access_token}"
+
+                    response = await self._session.request(
+                        method=method,
+                        url=url,
+                        headers=req_headers,
+                        json=data,
+                    )
+                    _verify_response_or_raise(response)
+                    return await response.json()
+
+            # No refresh available or not applicable; re-raise
+            raise
+        except Exception as exception:  # pylint: disable=broad-except
+            msg = f"Something really wrong happened! - {exception}"
+            raise KebaRestIntegrationApiClientError(
+                msg,
+            ) from exception
