@@ -1,14 +1,13 @@
-"""Adds config flow for Blueprint."""
+"""Adds config flow for Keba."""
 
 from __future__ import annotations
 
 import voluptuous as vol
-from slugify import slugify
-
 from homeassistant import config_entries
-from homeassistant.const import CONF_URL, CONF_PASSWORD, CONF_USERNAME
+from homeassistant.const import CONF_PASSWORD, CONF_URL, CONF_USERNAME
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
+from slugify import slugify
 
 from .api import (
     KebaRestIntegrationApiClient,
@@ -19,8 +18,8 @@ from .api import (
 from .const import DOMAIN, LOGGER
 
 
-class BlueprintFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
-    """Config flow for Blueprint."""
+class KebaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
+    """Config flow for Keba."""
 
     VERSION = 1
 

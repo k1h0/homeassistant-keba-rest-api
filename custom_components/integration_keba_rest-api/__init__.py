@@ -21,7 +21,7 @@ from .api import (
     KebaRestIntegrationApiClientError,
 )
 from .const import DOMAIN, LOGGER
-from .coordinator import BlueprintDataUpdateCoordinator
+from .coordinator import KebaDataUpdateCoordinator
 from .data import KebaRestIntegrationData
 
 if TYPE_CHECKING:
@@ -42,7 +42,7 @@ async def async_setup_entry(
     entry: KebaRestIntegrationConfigEntry,
 ) -> bool:
     """Set up this integration using UI."""
-    coordinator = BlueprintDataUpdateCoordinator(
+    coordinator = KebaDataUpdateCoordinator(
         hass=hass,
         logger=LOGGER,
         name=DOMAIN,

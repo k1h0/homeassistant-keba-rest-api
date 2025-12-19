@@ -112,7 +112,8 @@ class KebaRestIntegrationApiClient:
         return self._refresh_token
 
     async def async_refresh_jwt(self) -> str:
-        """Refresh the access token using the stored refresh token.
+        """
+        Refresh the access token using the stored refresh token.
 
         Returns the new access token. Raises KebaRestIntegrationApiClientError
         if no refresh token is available or the refresh fails.
@@ -145,7 +146,8 @@ class KebaRestIntegrationApiClient:
         headers: dict | None = None,
         include_auth: bool = True,
     ) -> Any:
-        """Get information from the API.
+        """
+        Get information from the API.
 
         Adds Authorization header automatically if an access token is present
         and include_auth is True. For login and refresh calls, callers should

@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from homeassistant.loader import Integration
 
     from .api import KebaRestIntegrationApiClient
-    from .coordinator import BlueprintDataUpdateCoordinator
+    from .coordinator import KebaDataUpdateCoordinator
 
 
 type KebaRestIntegrationConfigEntry = ConfigEntry[KebaRestIntegrationData]
@@ -18,8 +18,8 @@ type KebaRestIntegrationConfigEntry = ConfigEntry[KebaRestIntegrationData]
 
 @dataclass
 class KebaRestIntegrationData:
-    """Data for the Blueprint integration."""
+    """Data for the Keba integration."""
 
     client: KebaRestIntegrationApiClient
-    coordinator: BlueprintDataUpdateCoordinator
+    coordinator: KebaDataUpdateCoordinator
     integration: Integration

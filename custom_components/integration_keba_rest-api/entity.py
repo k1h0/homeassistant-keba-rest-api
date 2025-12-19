@@ -1,4 +1,4 @@
-"""BlueprintEntity class."""
+"""KebaEntity class."""
 
 from __future__ import annotations
 
@@ -6,15 +6,15 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import ATTRIBUTION
-from .coordinator import BlueprintDataUpdateCoordinator
+from .coordinator import KebaDataUpdateCoordinator
 
 
-class KebaRestIntegrationEntity(CoordinatorEntity[BlueprintDataUpdateCoordinator]):
-    """BlueprintEntity class."""
+class KebaRestIntegrationEntity(CoordinatorEntity[KebaDataUpdateCoordinator]):
+    """KebaEntity class."""
 
     _attr_attribution = ATTRIBUTION
 
-    def __init__(self, coordinator: BlueprintDataUpdateCoordinator) -> None:
+    def __init__(self, coordinator: KebaDataUpdateCoordinator) -> None:
         """Initialize."""
         super().__init__(coordinator)
         self._attr_unique_id = coordinator.config_entry.entry_id
