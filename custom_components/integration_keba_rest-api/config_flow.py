@@ -59,7 +59,7 @@ class KebaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_URL: user_input[CONF_URL],
                     CONF_USERNAME: user_input[CONF_USERNAME],
                     CONF_PASSWORD: user_input[CONF_PASSWORD],
-                    "refresh_token": tokens.get("refresh_token"),
+                    "refreshToken": tokens.get("refreshToken"),
                 }
 
                 return self.async_create_entry(
@@ -133,7 +133,7 @@ class KebaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                         new_data = {
                             **entry.data,
                             CONF_PASSWORD: user_input[CONF_PASSWORD],
-                            "refresh_token": tokens.get("refresh_token"),
+                            "refreshToken": tokens.get("refreshToken"),
                         }
                         self.hass.config_entries.async_update_entry(
                             entry, data=new_data

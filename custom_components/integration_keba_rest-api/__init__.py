@@ -61,7 +61,7 @@ async def async_setup_entry(
     )
 
     # If we previously persisted a refresh token, use it and attempt to refresh
-    rt = entry.data.get("refresh_token")
+    rt = entry.data.get("refreshToken")
     if rt:
         entry.runtime_data.client.set_refresh_token(rt)
         try:
@@ -83,10 +83,10 @@ async def async_setup_entry(
             LOGGER.exception("Error while logging in during setup: %s", exc)
             return False
 
-        # Persist refresh_token in the config entry data for future restarts
-        if tokens.get("refresh_token"):
+        # Persist refreshToken in the config entry data for future restarts
+        if tokens.get("refreshToken"):
             hass.config_entries.async_update_entry(
-                entry, data={**entry.data, "refresh_token": tokens.get("refresh_token")}
+                entry, data={**entry.data, "refreshToken": tokens.get("refreshToken")}
             )
 
     # https://developers.home-assistant.io/docs/integration_fetching_data#coordinated-single-api-poll-for-data-for-all-entities

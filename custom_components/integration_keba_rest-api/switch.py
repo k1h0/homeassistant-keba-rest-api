@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING, Any
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 
 from .entity import KebaRestIntegrationEntity
+from homeassistant.helpers.device_registry import DeviceInfo  # type: ignore[import]
+from .const import DOMAIN
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -66,6 +68,11 @@ class WallboxChargeSwitch(KebaRestIntegrationEntity, SwitchEntity):
         self.serial = serial
         self._attr_name = f"Wallbox {serial} Charging"
         self._attr_unique_id = f"wallbox_{serial}_charging"
+
+        # Expose wallbox as its own device
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, serial)}, name=f"Wallbox {serial}"
+        )
 
     @property
     def is_on(self) -> bool:

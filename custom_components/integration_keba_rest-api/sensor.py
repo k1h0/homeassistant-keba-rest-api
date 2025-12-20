@@ -19,6 +19,8 @@ from homeassistant.const import (  # type: ignore[import]
 )
 
 from .entity import KebaRestIntegrationEntity
+from homeassistant.helpers.device_registry import DeviceInfo  # type: ignore[import]
+from .const import DOMAIN
 
 if TYPE_CHECKING:  # isort: skip
     from homeassistant.core import HomeAssistant  # type: ignore[import]
@@ -188,6 +190,12 @@ class WallboxSensor(KebaRestIntegrationEntity, SensorEntity):
                 self._attr_device_class = descr.device_class
             if getattr(descr, "state_class", None) is not None:
                 self._attr_state_class = descr.state_class
+
+        # Expose each wallbox as its own Home Assistant device using the serial
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, serial)},
+            name=f"Wallbox {serial}",
+        )
 
     @property
     def native_value(self) -> Any | None:
