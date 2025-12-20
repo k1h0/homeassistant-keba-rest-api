@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Constants for integration_keba_rest-api."""
 
 from logging import Logger, getLogger

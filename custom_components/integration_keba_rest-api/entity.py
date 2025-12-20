@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """KebaEntity class."""
 
 from __future__ import annotations

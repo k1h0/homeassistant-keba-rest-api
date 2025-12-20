@@ -1,8 +1,9 @@
+#!/usr/bin/env python3
 """DataUpdateCoordinator for integration_keba_rest-api."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -22,11 +23,34 @@ class KebaDataUpdateCoordinator(DataUpdateCoordinator):
 
     config_entry: KebaRestIntegrationConfigEntry
 
-    async def _async_update_data(self) -> Any:
-        """Update data via library."""
+    async def _async_update_data(self) -> dict:
+        """Return mapping serial -> wallbox payload dict."""
+        data: dict[str, dict] = {}
+
         try:
-            return await self.config_entry.runtime_data.client.async_get_data()
-        except KebaRestIntegrationApiClientAuthenticationError as exception:
-            raise ConfigEntryAuthFailed(exception) from exception
-        except KebaRestIntegrationApiClientError as exception:
-            raise UpdateFailed(exception) from exception
+            resp = await self.config_entry.runtime_data.client.async_get_all_wallboxes()
+        except KebaRestIntegrationApiClientAuthenticationError as exc:
+            raise ConfigEntryAuthFailed(exc) from exc
+        except KebaRestIntegrationApiClientError as exc:
+            raise UpdateFailed(exc) from exc
+
+        wallboxes = resp.get("wallboxes", []) if isinstance(resp, dict) else []
+
+        for wb in wallboxes:
+            serial = wb.get("serialNumber")
+            if not serial:
+                continue
+            try:
+                detail = await self.config_entry.runtime_data.client.async_get_wallbox(
+                    serial
+                )
+                data[serial] = detail
+            except KebaRestIntegrationApiClientError as exc:
+                self.logger.debug("Error fetching wallbox %s: %s", serial, exc)
+            except Exception:  # pylint: disable=broad-except
+                # Log exception with stack trace; avoid passing exception object
+                self.logger.exception(
+                    "Unexpected error fetching wallbox %s",
+                    serial,
+                )
+        return data

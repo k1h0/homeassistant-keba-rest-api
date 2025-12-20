@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Switch platform for integration_keba_rest-api."""
 
 from __future__ import annotations
@@ -30,38 +31,59 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the switch platform."""
-    async_add_entities(
-        KebaRestIntegrationSwitch(
-            coordinator=entry.runtime_data.coordinator,
-            entity_description=entity_description,
-        )
-        for entity_description in ENTITY_DESCRIPTIONS
-    )
+    # Create a switch per wallbox serial to start/stop charging
+    coordinator = entry.runtime_data.coordinator
+    entities: list[WallboxChargeSwitch] = [
+        WallboxChargeSwitch(coordinator, serial) for serial in coordinator.data
+    ]
+
+    async_add_entities(entities)
+
+    # Listen for newly discovered wallboxes and add switches dynamically
+    known = set(coordinator.data)
+
+    def _update_switches() -> None:
+        """Add switches for newly discovered wallboxes."""
+        nonlocal known
+        current = set(coordinator.data)
+        added = current - known
+        if added:
+            new_entities = [
+                WallboxChargeSwitch(coordinator, serial) for serial in added
+            ]
+            async_add_entities(new_entities)
+            known = current
+
+    coordinator.async_add_listener(_update_switches)
 
 
-class KebaRestIntegrationSwitch(KebaRestIntegrationEntity, SwitchEntity):
-    """integration_keba_rest-api switch class."""
+class WallboxChargeSwitch(KebaRestIntegrationEntity, SwitchEntity):
+    """Switch to start/stop charging for a wallbox."""
 
-    def __init__(
-        self,
-        coordinator: KebaDataUpdateCoordinator,
-        entity_description: SwitchEntityDescription,
-    ) -> None:
-        """Initialize the switch class."""
+    def __init__(self, coordinator: KebaDataUpdateCoordinator, serial: str) -> None:
+        """Initialize switch for a given wallbox serial."""
         super().__init__(coordinator)
-        self.entity_description = entity_description
+        self.serial = serial
+        self._attr_name = f"Wallbox {serial} Charging"
+        self._attr_unique_id = f"wallbox_{serial}_charging"
 
     @property
     def is_on(self) -> bool:
-        """Return true if the switch is on."""
-        return self.coordinator.data.get("title", "") == "foo"
+        """Return True if wallbox is currently charging (if available)."""
+        wb = self.coordinator.data.get(self.serial)
+        if not wb:
+            return False
+        state = wb.get("state", {})
+        return state == "CHARGING"
 
     async def async_turn_on(self, **_: Any) -> None:
-        """Turn on the switch."""
-        await self.coordinator.config_entry.runtime_data.client.async_set_title("bar")
+        """Start charging on the wallbox."""
+        client = self.coordinator.config_entry.runtime_data.client
+        await client.async_set_wallbox_start_charging(self.serial)
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **_: Any) -> None:
-        """Turn off the switch."""
-        await self.coordinator.config_entry.runtime_data.client.async_set_title("foo")
+        """Stop charging on the wallbox."""
+        client = self.coordinator.config_entry.runtime_data.client
+        await client.async_set_wallbox_stop_charging(self.serial)
         await self.coordinator.async_request_refresh()

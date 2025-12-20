@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Custom types for integration_keba_rest-api."""
 
 from __future__ import annotations

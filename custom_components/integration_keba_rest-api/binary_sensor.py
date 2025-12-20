@@ -1,8 +1,9 @@
+#!/usr/bin/env python3
 """Binary sensor platform for integration_keba_rest-api."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -19,13 +20,19 @@ if TYPE_CHECKING:
     from .coordinator import KebaDataUpdateCoordinator
     from .data import KebaRestIntegrationConfigEntry
 
-ENTITY_DESCRIPTIONS = (
-    BinarySensorEntityDescription(
-        key="integration_keba_rest-api",
-        name="Keba Rest-API Integration Binary Sensor",
-        device_class=BinarySensorDeviceClass.CONNECTIVITY,
+
+BINARY_SENSOR_DEFINITIONS: dict[str, BinarySensorEntityDescription] = {
+    "vehiclePlugged": BinarySensorEntityDescription(
+        key="vehiclePlugged",
+        name="Vehicle Plugged In",
+        device_class=BinarySensorDeviceClass.PLUG,
     ),
-)
+    "sessionActive": BinarySensorEntityDescription(
+        key="sessionActive",
+        name="Charging Session Active",
+        device_class=BinarySensorDeviceClass.RUNNING,
+    ),
+}
 
 
 async def async_setup_entry(
@@ -34,28 +41,72 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the binary_sensor platform."""
-    async_add_entities(
-        KebaRestIntegrationBinarySensor(
-            coordinator=entry.runtime_data.coordinator,
-            entity_description=entity_description,
-        )
-        for entity_description in ENTITY_DESCRIPTIONS
-    )
+    coordinator = entry.runtime_data.coordinator
+
+    # Create binary sensors for each wallbox serial
+    entities = [
+        WallboxBinarySensor(coordinator, serial, descr.key, descr)
+        for serial in coordinator.data
+        for descr in BINARY_SENSOR_DEFINITIONS.values()
+    ]
+
+    async_add_entities(entities)
+
+    # Listen for new wallboxes and add binary sensors dynamically
+    known = set(coordinator.data)
+
+    def _update_binary_sensors() -> None:
+        """Add new binary sensors when new wallboxes are discovered."""
+        nonlocal known
+        current = set(coordinator.data)
+        added = current - known
+        if added:
+            new_entities = [
+                WallboxBinarySensor(coordinator, serial, descr.key, descr)
+                for serial in added
+                for descr in BINARY_SENSOR_DEFINITIONS.values()
+            ]
+            async_add_entities(new_entities)
+            known = current
+
+    coordinator.async_add_listener(_update_binary_sensors)
 
 
-class KebaRestIntegrationBinarySensor(KebaRestIntegrationEntity, BinarySensorEntity):
-    """integration_keba_rest-api binary_sensor class."""
+class WallboxBinarySensor(KebaRestIntegrationEntity, BinarySensorEntity):
+    """Binary sensor for wallbox boolean flags like vehiclePlugged or sessionActive."""
 
     def __init__(
         self,
         coordinator: KebaDataUpdateCoordinator,
+        serial: str,
+        key: str,
         entity_description: BinarySensorEntityDescription,
     ) -> None:
-        """Initialize the binary_sensor class."""
+        """Initialize a binary sensor for a wallbox serial and key."""
         super().__init__(coordinator)
+        self.serial = serial
+        self.key = key
         self.entity_description = entity_description
+        self._attr_name = f"Wallbox {serial} {entity_description.name}"
+        self._attr_unique_id = f"wallbox_{serial}_{key}"
 
     @property
     def is_on(self) -> bool:
-        """Return true if the binary_sensor is on."""
-        return self.coordinator.data.get("title", "") == "foo"
+        """Return the boolean state for the binary sensor."""
+        wb = self.coordinator.data.get(self.serial)
+        if not wb:
+            return False
+        return bool(wb.get(self.key))
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Expose helpful metadata for the binary sensor."""
+        wb = self.coordinator.data.get(self.serial)
+        if not wb:
+            return {}
+        attrs: dict[str, Any] = {}
+        for key in ("alias", "model", "firmwareVersion", "serialNumber"):
+            value = wb.get(key)
+            if value is not None:
+                attrs[key] = value
+        return attrs

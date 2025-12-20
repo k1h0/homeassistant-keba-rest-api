@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Sample API Client."""
 
 from __future__ import annotations
@@ -55,20 +56,32 @@ class KebaRestIntegrationApiClient:
         self._access_token: str | None = None
         self._refresh_token: str | None = None
 
-    async def async_get_data(self) -> Any:
-        """Get data from the API using the access token if available."""
+    async def async_get_all_wallboxes(self) -> Any:
+        """Get all wallboxes from the API using the access token if available."""
         return await self._api_wrapper(
             method="get",
-            url=self._url + "/posts/1",
+            url=self._url + "/v2/wallboxes",
         )
 
-    async def async_set_title(self, value: str) -> Any:
+    async def async_get_wallbox(self, serial_number: str) -> Any:
+        """Get complete wallbox information from the API using the access token."""
+        return await self._api_wrapper(
+            method="get",
+            url=self._url + "/v2/wallboxes/" + serial_number,
+        )
+
+    async def async_set_wallbox_start_charging(self, serial_number: str) -> Any:
         """Set data on the API using the access token if available."""
         return await self._api_wrapper(
-            method="patch",
-            url=self._url + "/posts/1",
-            data={"title": value},
-            headers={"Content-type": "application/json; charset=UTF-8"},
+            method="post",
+            url=self._url + "/v2/wallboxes/" + serial_number + "/start-charging",
+        )
+
+    async def async_set_wallbox_stop_charging(self, serial_number: str) -> Any:
+        """Set data on the API using the access token if available."""
+        return await self._api_wrapper(
+            method="post",
+            url=self._url + "/v2/wallboxes/" + serial_number + "/stop-charging",
         )
 
     async def async_login_jwt(
@@ -119,7 +132,8 @@ class KebaRestIntegrationApiClient:
         if no refresh token is available or the refresh fails.
         """
         if not self._refresh_token:
-            raise KebaRestIntegrationApiClientError("No refresh token available")
+            msg = "No refresh token available"
+            raise KebaRestIntegrationApiClientError(msg)
 
         headers = {"Authorization": f"Bearer {self._refresh_token}"}
         resp = await self._api_wrapper(
@@ -131,9 +145,8 @@ class KebaRestIntegrationApiClient:
 
         access = resp.get("access_token") if isinstance(resp, dict) else None
         if not access:
-            raise KebaRestIntegrationApiClientError(
-                "Refresh did not return new access_token"
-            )
+            msg = "Refresh did not return new access_token"
+            raise KebaRestIntegrationApiClientError(msg)
 
         self._access_token = access
         return access
@@ -142,6 +155,7 @@ class KebaRestIntegrationApiClient:
         self,
         method: str,
         url: str,
+        *,
         data: dict | None = None,
         headers: dict | None = None,
         include_auth: bool = True,
@@ -185,11 +199,7 @@ class KebaRestIntegrationApiClient:
         except KebaRestIntegrationApiClientAuthenticationError:
             # If we have a refresh token, attempt to refresh and retry the request once
             if include_auth and self._refresh_token:
-                try:
-                    await self.async_refresh_jwt()
-                except KebaRestIntegrationApiClientError:
-                    # Refresh failed, re-raise the original auth error
-                    raise
+                await self.async_refresh_jwt()
 
                 # Retry the original request with refreshed access token
                 async with async_timeout.timeout(10):

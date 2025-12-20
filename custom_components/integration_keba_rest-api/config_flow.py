@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Adds config flow for Keba."""
 
 from __future__ import annotations
@@ -125,7 +126,8 @@ class KebaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 LOGGER.exception(exception)
                 errors["base"] = "unknown"
             else:
-                # Update the existing config entry with the new password and refresh token
+                # Update the existing config entry with the new password
+                # and refresh token
                 for entry in self._async_current_entries():
                     if entry.unique_id == slugify(self._reauth_entry[CONF_USERNAME]):
                         new_data = {

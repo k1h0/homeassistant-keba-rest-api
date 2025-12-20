@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Custom integration to integrate integration_keba_rest-api with Home Assistant.
 
