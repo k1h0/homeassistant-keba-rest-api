@@ -57,8 +57,8 @@ class KebaRestIntegrationApiClient:
         self._session = session
 
         # Tokens obtained via /v2/jwt/login and /v2/jwt/refresh
-        self._access_token: str | None = None
-        self._refresh_token: str | None = None
+        self._accessToken: str | None = None
+        self._refreshToken: str | None = None
 
     async def async_get_all_wallboxes(self) -> Any:
         """Get all wallboxes from the API using the access token if available."""
@@ -96,7 +96,7 @@ class KebaRestIntegrationApiClient:
 
         If username/password are not provided, falls back to values given at init.
         Raises KebaRestIntegrationApiClientAuthenticationError on auth failure.
-        Returns a dict with 'access_token' and 'refresh_token'.
+        Returns a dict with 'accessToken' and 'refreshToken'.
         """
         body = {
             "username": username or self._username,
@@ -109,24 +109,24 @@ class KebaRestIntegrationApiClient:
             include_auth=False,
         )
 
-        # Expect access_token and refresh_token in response
-        access = resp.get("access_token") if isinstance(resp, dict) else None
-        refresh = resp.get("refresh_token") if isinstance(resp, dict) else None
+        # Expect accessToken and refreshToken in response
+        access = resp.get("accessToken") if isinstance(resp, dict) else None
+        refresh = resp.get("refreshToken") if isinstance(resp, dict) else None
         if not access or not refresh:
-            msg = "Login did not return access_token and refresh_token"
-            raise KebaRestIntegrationApiClientAuthenticationError(msg)
+            msg = "Login did not return accessToken and refreshToken"
+            raise KebaRestIntegrationApiClientAuthenticationError(msg, resp)
 
-        self._access_token = access
-        self._refresh_token = refresh
-        return {"access_token": access, "refresh_token": refresh}
+        self._accessToken = access
+        self._refreshToken = refresh
+        return {"accessToken": access, "refreshToken": refresh}
 
     def set_refresh_token(self, token: str | None) -> None:
         """Set the refresh token on the client (used when loading persisted token)."""
-        self._refresh_token = token
+        self._refreshToken = token
 
     def get_refresh_token(self) -> str | None:
         """Get currently stored refresh token (may be None)."""
-        return self._refresh_token
+        return self._refreshToken
 
     async def async_refresh_jwt(self) -> str:
         """
@@ -135,11 +135,11 @@ class KebaRestIntegrationApiClient:
         Returns the new access token. Raises KebaRestIntegrationApiClientError
         if no refresh token is available or the refresh fails.
         """
-        if not self._refresh_token:
+        if not self._refreshToken:
             msg = "No refresh token available"
             raise KebaRestIntegrationApiClientError(msg)
 
-        headers = {"Authorization": f"Bearer {self._refresh_token}"}
+        headers = {"Authorization": f"Bearer {self._refreshToken}"}
         resp = await self._api_wrapper(
             method="post",
             url=self._url + "/v2/jwt/refresh",
@@ -147,12 +147,12 @@ class KebaRestIntegrationApiClient:
             include_auth=False,
         )
 
-        access = resp.get("access_token") if isinstance(resp, dict) else None
+        access = resp.get("accessToken") if isinstance(resp, dict) else None
         if not access:
-            msg = "Refresh did not return new access_token"
+            msg = "Refresh did not return new accessToken"
             raise KebaRestIntegrationApiClientError(msg)
 
-        self._access_token = access
+        self._accessToken = access
         return access
 
     async def _perform_request(
@@ -242,10 +242,10 @@ class KebaRestIntegrationApiClient:
             req_headers = dict(headers or {})
             if (
                 include_auth
-                and self._access_token
+                and self._accessToken
                 and "Authorization" not in req_headers
             ):
-                req_headers["Authorization"] = f"Bearer {self._access_token}"
+                req_headers["Authorization"] = f"Bearer {self._accessToken}"
 
             # Perform the request (includes a single insecure retry on cert failures)
             return await self._perform_request(
@@ -262,13 +262,13 @@ class KebaRestIntegrationApiClient:
             ) from exception
         except KebaRestIntegrationApiClientAuthenticationError:
             # If we have a refresh token, attempt to refresh and retry the request once
-            if include_auth and self._refresh_token:
+            if include_auth and self._refreshToken:
                 await self.async_refresh_jwt()
 
                 # Retry the original request with refreshed access token
                 req_headers = dict(headers or {})
-                if self._access_token and "Authorization" not in req_headers:
-                    req_headers["Authorization"] = f"Bearer {self._access_token}"
+                if self._accessToken and "Authorization" not in req_headers:
+                    req_headers["Authorization"] = f"Bearer {self._accessToken}"
 
                 return await self._perform_request(
                     method,
