@@ -30,7 +30,7 @@ BINARY_SENSOR_DEFINITIONS: dict[str, BinarySensorEntityDescription] = {
     "sessionActive": BinarySensorEntityDescription(
         key="sessionActive",
         name="Charging Session Active",
-        device_class=BinarySensorDeviceClass.RUNNING,
+        device_class=BinarySensorDeviceClass.POWER,
     ),
 }
 

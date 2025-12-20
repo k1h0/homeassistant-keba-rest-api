@@ -5,13 +5,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from homeassistant.components.sensor import (
+from homeassistant.components.sensor import (  # type: ignore[import]
     SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import (
+from homeassistant.const import (  # type: ignore[import]
     UnitOfElectricCurrent,
     UnitOfEnergy,
     UnitOfPower,
@@ -20,9 +20,11 @@ from homeassistant.const import (
 
 from .entity import KebaRestIntegrationEntity
 
-if TYPE_CHECKING:
-    from homeassistant.core import HomeAssistant
-    from homeassistant.helpers.entity_platform import AddEntitiesCallback
+if TYPE_CHECKING:  # isort: skip
+    from homeassistant.core import HomeAssistant  # type: ignore[import]
+    from homeassistant.helpers.entity_platform import (
+        AddEntitiesCallback,  # type: ignore[import]
+    )
 
     from .coordinator import KebaDataUpdateCoordinator
     from .data import KebaRestIntegrationConfigEntry
@@ -41,15 +43,6 @@ SENSOR_DEFINITIONS: dict[str, SensorEntityDescription] = {
         key="state",
         name="State of Wallbox",
     ),
-    "vehiclePlugged": SensorEntityDescription(
-        key="vehiclePlugged",
-        name="Vehicle Plugged In",
-    ),
-    "sessionActive": SensorEntityDescription(
-        key="sessionActive",
-        name="Charging Session Active",
-    ),
-    # errorCode is exposed as an attribute only (see extra_state_attributes)
     "maxPhases": SensorEntityDescription(
         key="maxPhases",
         name="Max Phases",
@@ -71,6 +64,8 @@ SENSOR_DEFINITIONS: dict[str, SensorEntityDescription] = {
         name="Meter Value",
         device_class=SensorDeviceClass.ENERGY,
         native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
+        suggested_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=3,
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
     "totalActivePower": SensorEntityDescription(
@@ -78,6 +73,8 @@ SENSOR_DEFINITIONS: dict[str, SensorEntityDescription] = {
         name="Total Active Power",
         device_class=SensorDeviceClass.POWER,
         native_unit_of_measurement=UnitOfPower.WATT,
+        suggested_unit_of_measurement=UnitOfPower.KILO_WATT,
+        suggested_display_precision=1,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     "currentOffered": SensorEntityDescription(
@@ -148,10 +145,21 @@ async def async_setup_entry(
 def _safe_get_meter_value(wb: dict, path: str) -> Any | None:
     """Return a value from the nested `meter` object or None if unavailable."""
     meter = wb.get("meter") or {}
-    value = meter.get(path)
-    if value is not None:
-        return value
-    return None
+    return meter.get(path)
+
+
+def _safe_mul(value: Any | None, multiplier: float) -> Any | None:
+    """
+    Multiply a value by multiplier.
+
+    Returns None if the value is missing or cannot be converted to a number.
+    """
+    if value is None:
+        return None
+    try:
+        return float(value) * multiplier
+    except (TypeError, ValueError):
+        return None
 
 
 class WallboxSensor(KebaRestIntegrationEntity, SensorEntity):
@@ -193,12 +201,20 @@ class WallboxSensor(KebaRestIntegrationEntity, SensorEntity):
             "vehiclePlugged": lambda s: bool(s.get("vehiclePlugged")),
             "sessionActive": lambda s: bool(s.get("sessionActive")),
             "maxPhases": lambda s: s.get("maxPhases"),
-            "maxCurrent": lambda s: float(s.get("maxCurrent") or 0),
+            "maxCurrent": lambda s: _safe_mul(s.get("maxCurrent"), 0.001),
             "phasesUsed": lambda s: s.get("phasesUsed") or s.get("phaseUsed"),
-            "meterValue": lambda s: _safe_get_meter_value(s, "meterValue"),
-            "totalActivePower": lambda s: _safe_get_meter_value(s, "totalActivePower"),
-            "currentOffered": lambda s: _safe_get_meter_value(s, "currentOffered"),
-            "temperature": lambda s: _safe_get_meter_value(s, "temperature"),
+            "meterValue": lambda s: _safe_mul(
+                _safe_get_meter_value(s, "meterValue"), 0.001
+            ),
+            "totalActivePower": lambda s: _safe_mul(
+                _safe_get_meter_value(s, "totalActivePower"), 0.001
+            ),
+            "currentOffered": lambda s: _safe_mul(
+                _safe_get_meter_value(s, "currentOffered"), 0.001
+            ),
+            "temperature": lambda s: _safe_mul(
+                _safe_get_meter_value(s, "temperature"), 0.01
+            ),
         }
 
         func = mapping.get(self.key)
