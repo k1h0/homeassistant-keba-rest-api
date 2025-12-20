@@ -2,11 +2,11 @@
   "domain": "integration_keba_rest-api",
   "name": "Keba Rest-API Integration",
   "codeowners": [
-    "@ludeeus"
+    "@k1h0"
   ],
   "config_flow": true,
-  "documentation": "https://github.com/ludeeus/integration_keba_rest-api",
+  "documentation": "https://github.com/k1h0/homeassistant-keba-rest-api",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/ludeeus/integration_keba_rest-api/issues",
+  "issue_tracker": "https://github.com/k1h0/homeassistant-keba-rest-api/issues",
   "version": "0.1.0"
 }

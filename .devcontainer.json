@@ -1,5 +1,5 @@
 {
-    "name": "k1h0/integration_keba_rest-api",
+    "name": "k1h0/homeassistant-keba-rest-api",
     "image": "mcr.microsoft.com/devcontainers/python:3.13",
     "postCreateCommand": "scripts/setup",
     "runArgs": [
