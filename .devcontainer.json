@@ -1,16 +1,19 @@
 {
-    "name": "ludeeus/integration_keba_rest-api",
+    "name": "k1h0/integration_keba_rest-api",
     "image": "mcr.microsoft.com/devcontainers/python:3.13",
     "postCreateCommand": "scripts/setup",
-    "forwardPorts": [
-        8123
+    "runArgs": [
+        "--network=host"
     ],
-    "portsAttributes": {
-        "8123": {
-            "label": "Home Assistant",
-            "onAutoForward": "notify"
-        }
-    },
+    // "forwardPorts": [
+    //     8123
+    // ],
+    // "portsAttributes": {
+    //     "8123": {
+    //         "label": "Home Assistant",
+    //         "onAutoForward": "notify"
+    //     }
+    // },
     "customizations": {
         "vscode": {
             "extensions": [

@@ -4,10 +4,14 @@
 from __future__ import annotations
 
 import socket
+import ssl
 from typing import Any
 
-import aiohttp
-import async_timeout
+import aiohttp  # type: ignore[import]
+import async_timeout  # type: ignore[import]
+
+# Default request timeout in seconds
+_DEFAULT_REQUEST_TIMEOUT = 10
 
 
 class KebaRestIntegrationApiClientError(Exception):
@@ -151,6 +155,73 @@ class KebaRestIntegrationApiClient:
         self._access_token = access
         return access
 
+    async def _perform_request(
+        self,
+        method: str,
+        url: str,
+        *,
+        headers: dict | None = None,
+        data: dict | None = None,
+    ) -> Any:
+        """
+        Perform a single request.
+
+        Retries once with SSL verification disabled on certificate
+        verification failures (equivalent to `curl --insecure`).
+        """
+        try:
+            async with async_timeout.timeout(_DEFAULT_REQUEST_TIMEOUT):
+                response = await self._session.request(
+                    method=method,
+                    url=url,
+                    headers=headers,
+                    json=data,
+                )
+                _verify_response_or_raise(response)
+                return await response.json()
+        except KebaRestIntegrationApiClientAuthenticationError:
+            # Propagate authentication errors to be handled by caller
+            raise
+        except TimeoutError:
+            # Propagate timeout to be handled by caller
+            raise
+        except Exception as exc:  # pylint: disable=broad-except
+            # If this looks like a certificate verification failure, retry insecure once
+            exc_name = exc.__class__.__name__
+            exc_str = str(exc).lower()
+            is_cert_error = (
+                isinstance(exc, ssl.SSLCertVerificationError)
+                or exc_name == "ClientConnectorCertificateError"
+                or "certificate" in exc_str
+                or "certificate verify failed" in exc_str
+            )
+
+            if is_cert_error:
+                try:
+                    async with async_timeout.timeout(_DEFAULT_REQUEST_TIMEOUT):
+                        response = await self._session.request(
+                            method=method,
+                            url=url,
+                            headers=headers,
+                            json=data,
+                            ssl=False,
+                        )
+                        _verify_response_or_raise(response)
+                        return await response.json()
+                except Exception as exc2:
+                    msg2 = (
+                        f"Error fetching information using insecure SSL mode - {exc2}"
+                    )
+                    raise KebaRestIntegrationApiClientCommunicationError(msg2) from exc2
+
+            # Non-SSL-related client errors
+            if isinstance(exc, (aiohttp.ClientError, socket.gaierror)):
+                msg = f"Error fetching information - {exc}"
+                raise KebaRestIntegrationApiClientCommunicationError(msg) from exc
+
+            # Re-raise anything else so outer handler can manage it
+            raise
+
     async def _api_wrapper(
         self,
         method: str,
@@ -168,31 +239,24 @@ class KebaRestIntegrationApiClient:
         set include_auth=False so we do not attach an access token.
         """
         try:
-            async with async_timeout.timeout(10):
-                req_headers = dict(headers or {})
-                if (
-                    include_auth
-                    and self._access_token
-                    and "Authorization" not in req_headers
-                ):
-                    req_headers["Authorization"] = f"Bearer {self._access_token}"
+            req_headers = dict(headers or {})
+            if (
+                include_auth
+                and self._access_token
+                and "Authorization" not in req_headers
+            ):
+                req_headers["Authorization"] = f"Bearer {self._access_token}"
 
-                response = await self._session.request(
-                    method=method,
-                    url=url,
-                    headers=req_headers,
-                    json=data,
-                )
-                _verify_response_or_raise(response)
-                return await response.json()
+            # Perform the request (includes a single insecure retry on cert failures)
+            return await self._perform_request(
+                method,
+                url,
+                headers=req_headers,
+                data=data,
+            )
 
         except TimeoutError as exception:
             msg = f"Timeout error fetching information - {exception}"
-            raise KebaRestIntegrationApiClientCommunicationError(
-                msg,
-            ) from exception
-        except (aiohttp.ClientError, socket.gaierror) as exception:
-            msg = f"Error fetching information - {exception}"
             raise KebaRestIntegrationApiClientCommunicationError(
                 msg,
             ) from exception
@@ -202,22 +266,23 @@ class KebaRestIntegrationApiClient:
                 await self.async_refresh_jwt()
 
                 # Retry the original request with refreshed access token
-                async with async_timeout.timeout(10):
-                    req_headers = dict(headers or {})
-                    if self._access_token and "Authorization" not in req_headers:
-                        req_headers["Authorization"] = f"Bearer {self._access_token}"
+                req_headers = dict(headers or {})
+                if self._access_token and "Authorization" not in req_headers:
+                    req_headers["Authorization"] = f"Bearer {self._access_token}"
 
-                    response = await self._session.request(
-                        method=method,
-                        url=url,
-                        headers=req_headers,
-                        json=data,
-                    )
-                    _verify_response_or_raise(response)
-                    return await response.json()
+                return await self._perform_request(
+                    method,
+                    url,
+                    headers=req_headers,
+                    data=data,
+                )
 
             # No refresh available or not applicable; re-raise
             raise
+        except TypeError as exception:
+            # Handle resolver TypeError (aiodns/pycares mismatch)
+            msg = f"Communication error during DNS resolution - {exception}"
+            raise KebaRestIntegrationApiClientCommunicationError(msg) from exception
         except Exception as exception:  # pylint: disable=broad-except
             msg = f"Something really wrong happened! - {exception}"
             raise KebaRestIntegrationApiClientError(
