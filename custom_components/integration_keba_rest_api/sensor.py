@@ -17,10 +17,10 @@ from homeassistant.const import (  # type: ignore[import]
     UnitOfPower,
     UnitOfTemperature,
 )
-
-from .entity import KebaRestIntegrationEntity
 from homeassistant.helpers.device_registry import DeviceInfo  # type: ignore[import]
+
 from .const import DOMAIN
+from .entity import KebaRestIntegrationEntity
 
 if TYPE_CHECKING:  # isort: skip
     from homeassistant.core import HomeAssistant  # type: ignore[import]

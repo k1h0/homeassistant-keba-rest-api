@@ -6,10 +6,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
-
-from .entity import KebaRestIntegrationEntity
 from homeassistant.helpers.device_registry import DeviceInfo  # type: ignore[import]
+
 from .const import DOMAIN
+from .entity import KebaRestIntegrationEntity
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant

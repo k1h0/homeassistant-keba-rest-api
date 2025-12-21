@@ -10,10 +10,10 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
-
-from .entity import KebaRestIntegrationEntity
 from homeassistant.helpers.device_registry import DeviceInfo  # type: ignore[import]
+
 from .const import DOMAIN
+from .entity import KebaRestIntegrationEntity
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
