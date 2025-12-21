@@ -48,6 +48,7 @@ async def async_setup_entry(
         logger=LOGGER,
         name=DOMAIN,
         update_interval=timedelta(seconds=60),
+        always_update=True,
     )
     entry.runtime_data = KebaRestIntegrationData(
         client=KebaRestIntegrationApiClient(
