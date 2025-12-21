@@ -73,7 +73,9 @@ class KebaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 {
                     vol.Required(
                         CONF_URL,
-                        default=(user_input or {}).get(CONF_URL, vol.UNDEFINED),
+                        default=(user_input or {}).get(
+                            CONF_URL, "https://[URL or IP address of wallbox]:8443"
+                        ),
                     ): selector.TextSelector(
                         selector.TextSelectorConfig(
                             type=selector.TextSelectorType.TEXT,
@@ -81,7 +83,7 @@ class KebaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     ),
                     vol.Required(
                         CONF_USERNAME,
-                        default=(user_input or {}).get(CONF_USERNAME, vol.UNDEFINED),
+                        default=(user_input or {}).get(CONF_USERNAME, "admin"),
                     ): selector.TextSelector(
                         selector.TextSelectorConfig(
                             type=selector.TextSelectorType.TEXT,

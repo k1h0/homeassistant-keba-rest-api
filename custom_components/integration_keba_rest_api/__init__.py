@@ -47,6 +47,7 @@ async def async_setup_entry(
         hass=hass,
         logger=LOGGER,
         name=DOMAIN,
+        config_entry=entry,
         update_interval=timedelta(seconds=60),
         always_update=True,
     )
