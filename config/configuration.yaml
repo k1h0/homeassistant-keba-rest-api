@@ -9,4 +9,4 @@ homeassistant:
 logger:
   default: info
   logs:
-    custom_components.integration_keba_rest-api: debug
+    custom_components.integration_keba_rest_api: debug

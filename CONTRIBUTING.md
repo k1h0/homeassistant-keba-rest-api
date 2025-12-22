@@ -48,7 +48,7 @@ Use [black](https://github.com/ambv/black) to make sure the code follows the sty
 
 ## Test your code modification
 
-This custom component is based on [integration_keba_rest-api template](https://github.com/ludeeus/integration_keba_rest-api).
+This custom component is based on [integration_keba_rest_api template](https://github.com/ludeeus/integration_keba_rest_api).
 
 It comes with development environment in a container, easy to launch
 if you use Visual Studio Code. With this container you will have a stand alone

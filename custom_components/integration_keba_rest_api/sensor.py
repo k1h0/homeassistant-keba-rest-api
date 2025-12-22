@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sensor platform for integration_keba_rest-api."""
+"""Sensor platform for integration_keba_rest_api."""
 
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ if TYPE_CHECKING:  # isort: skip
 
 ENTITY_DESCRIPTIONS = (
     SensorEntityDescription(
-        key="integration_keba_rest-api",
+        key="integration_keba_rest_api",
         name="Integration Sensor",
         icon="mdi:format-quote-close",
     ),
@@ -186,6 +186,10 @@ class WallboxSensor(KebaRestIntegrationEntity, SensorEntity):
         if descr is not None:
             if getattr(descr, "native_unit_of_measurement", None) is not None:
                 self._attr_native_unit_of_measurement = descr.native_unit_of_measurement
+            if getattr(descr, "suggested_unit_of_measurement", None) is not None:
+                self.suggested_unit_of_measurement = descr.suggested_unit_of_measurement
+            if getattr(descr, "suggested_display_precision", None) is not None:
+                self.suggested_display_precision = descr.suggested_display_precision
             if getattr(descr, "device_class", None) is not None:
                 self._attr_device_class = descr.device_class
             if getattr(descr, "state_class", None) is not None:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Binary sensor platform for integration_keba_rest-api."""
+"""Binary sensor platform for integration_keba_rest_api."""
 
 from __future__ import annotations
 

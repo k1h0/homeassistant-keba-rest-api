@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""DataUpdateCoordinator for integration_keba_rest-api."""
+"""DataUpdateCoordinator for integration_keba_rest_api."""
 
 from __future__ import annotations
 
@@ -27,6 +27,7 @@ class KebaDataUpdateCoordinator(DataUpdateCoordinator):
         """Return mapping serial -> wallbox payload dict."""
         data: dict[str, dict] = {}
 
+        self.logger.debug("Fetching wallbox data")
         try:
             resp = await self.config_entry.runtime_data.client.async_get_all_wallboxes()
         except KebaRestIntegrationApiClientAuthenticationError as exc:

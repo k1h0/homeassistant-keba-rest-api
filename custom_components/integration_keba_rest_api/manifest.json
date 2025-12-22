@@ -1,5 +1,5 @@
 {
-  "domain": "integration_keba_rest-api",
+  "domain": "integration_keba_rest_api",
   "name": "Keba Rest-API Integration",
   "codeowners": [
     "@k1h0"

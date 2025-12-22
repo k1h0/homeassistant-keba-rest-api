@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Switch platform for integration_keba_rest-api."""
+"""Switch platform for integration_keba_rest_api."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 ENTITY_DESCRIPTIONS = (
     SwitchEntityDescription(
-        key="integration_keba_rest-api",
+        key="integration_keba_rest_api",
         name="Integration Switch",
         icon="mdi:format-quote-close",
     ),

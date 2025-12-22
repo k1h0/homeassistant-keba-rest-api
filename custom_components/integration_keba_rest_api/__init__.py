@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Custom integration to integrate integration_keba_rest-api with Home Assistant.
+Custom integration to integrate integration_keba_rest_api with Home Assistant.
 
 For more details about this integration, please refer to
-https://github.com/ludeeus/integration_keba_rest-api
+https://github.com/ludeeus/integration_keba_rest_api
 """
 
 from __future__ import annotations
