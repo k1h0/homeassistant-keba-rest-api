@@ -55,4 +55,5 @@ class KebaDataUpdateCoordinator(DataUpdateCoordinator):
                     "Unexpected error fetching wallbox %s",
                     serial,
                 )
+        self.logger.debug("Received updated values. data: %s", data)
         return data
