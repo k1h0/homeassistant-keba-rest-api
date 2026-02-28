@@ -48,7 +48,9 @@ async def async_setup_entry(
         logger=LOGGER,
         name=DOMAIN,
         config_entry=entry,
-        update_interval=timedelta(seconds=60),
+        update_interval=timedelta(
+            seconds=max(5, int(entry.options.get("coordinator_poll_interval", 60)))
+        ),
         always_update=True,
     )
     entry.runtime_data = KebaRestIntegrationData(

@@ -26,8 +26,10 @@ class KebaDataUpdateCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self) -> dict:
         """Return mapping serial -> wallbox payload dict."""
         data: dict[str, dict] = {}
-        
-        self.logger.debug("Trying to update values. config_entry: %s", self.config_entry)
+
+        self.logger.debug(
+            "Trying to update values. config_entry: %s", self.config_entry
+        )
 
         self.logger.debug("Fetching wallbox data")
         try:

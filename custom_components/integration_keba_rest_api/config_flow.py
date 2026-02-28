@@ -166,3 +166,53 @@ class KebaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         )
         # Attempt JWT login to verify credentials and return tokens
         return await client.async_login_jwt(username=username, password=password)
+
+    def async_get_options_flow(
+        self, config_entry: config_entries.ConfigEntry
+    ) -> config_entries.OptionsFlow:
+        """Return options flow handler for this integration."""
+        return OptionsFlowHandler(config_entry)
+
+
+class OptionsFlowHandler(config_entries.OptionsFlow):
+    """Handle options for the integration."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow with the related config entry."""
+        self.config_entry: config_entries.ConfigEntry = config_entry
+
+    async def async_step_init(
+        self, user_input: dict | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Manage the options."""
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        current = self.config_entry.options or {}
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(
+                        "coordinator_poll_interval",
+                        default=current.get("coordinator_poll_interval", 60),
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=5,
+                            max=3600,
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
+                    vol.Optional(
+                        "confirm_timeout",
+                        default=current.get("confirm_timeout", 60),
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=5,
+                            max=600,
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
+                }
+            ),
+        )

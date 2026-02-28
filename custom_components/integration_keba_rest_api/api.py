@@ -6,6 +6,7 @@ from __future__ import annotations
 import socket
 import ssl
 from typing import Any
+from urllib.parse import urlparse
 
 import aiohttp  # type: ignore[import]
 import async_timeout  # type: ignore[import]
@@ -51,6 +52,10 @@ class KebaRestIntegrationApiClient:
         session: aiohttp.ClientSession,
     ) -> None:
         """Sample API Client."""
+        # Ensure URL has a scheme; default to https if missing
+        parsed = urlparse(url)
+        if not parsed.scheme:
+            url = "https://" + url
         self._url = url.removesuffix("/")
         self._username = username
         self._password = password
@@ -281,7 +286,12 @@ class KebaRestIntegrationApiClient:
             raise
         except TypeError as exception:
             # Handle resolver TypeError (aiodns/pycares mismatch)
-            msg = f"Communication error during DNS resolution - {exception}"
+            msg = (
+                f"Communication error during DNS resolution - {exception}. "
+                "This can be caused by incompatible versions of 'aiodns' "
+                "and 'pycares'. Try installing compatible versions, e.g. "
+                "'pip install --upgrade aiodns pycares', or run without aiodns."
+            )
             raise KebaRestIntegrationApiClientCommunicationError(msg) from exception
         except Exception as exception:  # pylint: disable=broad-except
             msg = f"Something really wrong happened! - {exception}"
