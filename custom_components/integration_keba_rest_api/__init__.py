@@ -8,6 +8,7 @@ https://github.com/ludeeus/integration_keba_rest_api
 
 from __future__ import annotations
 
+import asyncio
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
@@ -26,7 +27,7 @@ from .coordinator import KebaDataUpdateCoordinator
 from .data import KebaRestIntegrationData
 
 if TYPE_CHECKING:
-    from homeassistant.core import HomeAssistant
+    from homeassistant.core import HomeAssistant, ServiceCall
 
     from .data import KebaRestIntegrationConfigEntry
 
@@ -35,6 +36,19 @@ PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
     Platform.SWITCH,
 ]
+
+SERVICE_FETCH_DATA = "fetch_data"
+
+
+async def _async_fetch_data(hass: HomeAssistant, _call: ServiceCall) -> None:
+    """Refresh data for all loaded KEBA config entries concurrently."""
+    await asyncio.gather(
+        *(
+            entry.runtime_data.coordinator.async_request_refresh()
+            for entry in hass.config_entries.async_entries(DOMAIN)
+            if entry.runtime_data and entry.runtime_data.coordinator
+        )
+    )
 
 
 # https://developers.home-assistant.io/docs/config_entries_index/#setting-up-an-entry
@@ -99,6 +113,14 @@ async def async_setup_entry(
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
+    # Register the fetch_data service once (shared across all config entries)
+    if not hass.services.has_service(DOMAIN, SERVICE_FETCH_DATA):
+
+        async def _handle_fetch_data(call: ServiceCall) -> None:
+            await _async_fetch_data(hass, call)
+
+        hass.services.async_register(DOMAIN, SERVICE_FETCH_DATA, _handle_fetch_data)
+
     return True
 
 
@@ -107,7 +129,13 @@ async def async_unload_entry(
     entry: KebaRestIntegrationConfigEntry,
 ) -> bool:
     """Handle removal of an entry."""
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+    # Unregister the service when the last config entry is removed
+    if unload_ok and not hass.config_entries.async_entries(DOMAIN):
+        hass.services.async_remove(DOMAIN, SERVICE_FETCH_DATA)
+
+    return unload_ok
 
 
 async def async_reload_entry(

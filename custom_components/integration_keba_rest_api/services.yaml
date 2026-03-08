@@ -1,0 +1,3 @@
+fetch_data:
+  name: Fetch data
+  description: Triggers an immediate data refresh for all KEBA wallboxes instead of waiting for the next polling interval.
