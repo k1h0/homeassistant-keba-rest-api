@@ -8,11 +8,13 @@ https://github.com/ludeeus/integration_keba_rest_api
 
 from __future__ import annotations
 
+import asyncio
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from homeassistant.const import CONF_PASSWORD, CONF_URL, CONF_USERNAME, Platform
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.loader import async_get_loaded_integration
 
@@ -26,7 +28,7 @@ from .coordinator import KebaDataUpdateCoordinator
 from .data import KebaRestIntegrationData
 
 if TYPE_CHECKING:
-    from homeassistant.core import HomeAssistant
+    from homeassistant.core import HomeAssistant, ServiceCall
 
     from .data import KebaRestIntegrationConfigEntry
 
@@ -35,6 +37,39 @@ PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
     Platform.SWITCH,
 ]
+
+SERVICE_FETCH_DATA = "fetch_data"
+
+
+async def _async_fetch_data(hass: HomeAssistant, call: ServiceCall) -> None:
+    """Refresh data for the targeted KEBA wallbox(es) or all if no target given."""
+    # HA puts device_id (str or list[str]) into call.data when a target is provided
+    raw = call.data.get("device_id", [])
+    device_ids: list[str] = [raw] if isinstance(raw, str) else list(raw)
+
+    if device_ids:
+        # Resolve targeted device IDs to the matching config entry IDs
+        device_reg = dr.async_get(hass)
+        entry_ids: set[str] = set()
+        for did in device_ids:
+            device = device_reg.async_get(did)
+            if device:
+                entry_ids.update(device.config_entries)
+    else:
+        # No target specified: include all config entries for this domain
+        entry_ids = {
+            entry.entry_id for entry in hass.config_entries.async_entries(DOMAIN)
+        }
+
+    coordinators = [
+        entry.runtime_data.coordinator
+        for entry in hass.config_entries.async_entries(DOMAIN)
+        if entry.entry_id in entry_ids
+        and entry.runtime_data
+        and entry.runtime_data.coordinator
+    ]
+
+    await asyncio.gather(*(c.async_request_refresh() for c in coordinators))
 
 
 # https://developers.home-assistant.io/docs/config_entries_index/#setting-up-an-entry
@@ -99,6 +134,14 @@ async def async_setup_entry(
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
+    # Register the fetch_data service once (shared across all config entries)
+    if not hass.services.has_service(DOMAIN, SERVICE_FETCH_DATA):
+
+        async def _handle_fetch_data(call: ServiceCall) -> None:
+            await _async_fetch_data(hass, call)
+
+        hass.services.async_register(DOMAIN, SERVICE_FETCH_DATA, _handle_fetch_data)
+
     return True
 
 
@@ -107,7 +150,13 @@ async def async_unload_entry(
     entry: KebaRestIntegrationConfigEntry,
 ) -> bool:
     """Handle removal of an entry."""
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+    # Unregister the service when the last config entry is removed
+    if unload_ok and not hass.config_entries.async_entries(DOMAIN):
+        hass.services.async_remove(DOMAIN, SERVICE_FETCH_DATA)
+
+    return unload_ok
 
 
 async def async_reload_entry(
