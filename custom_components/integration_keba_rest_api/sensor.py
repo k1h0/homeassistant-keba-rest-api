@@ -196,8 +196,11 @@ class WallboxSensor(KebaRestIntegrationEntity, SensorEntity):
                 self._attr_state_class = descr.state_class
 
         # Expose each wallbox as its own Home Assistant device using the serial
+        # Also include the config entry id as an identifier so the created
+        # device is associated with the config entry. This enables device
+        # actions (which look at device.config_entries) to be offered.
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, serial)},
+            identifiers={(DOMAIN, serial), (DOMAIN, coordinator.config_entry.entry_id)},
             name=f"Wallbox {serial}",
         )
 
