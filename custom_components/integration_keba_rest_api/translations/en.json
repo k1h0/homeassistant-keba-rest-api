@@ -17,11 +17,5 @@
         "abort": {
             "already_configured": "This entry is already configured."
         }
-    },
-    "services": {
-        "fetch_data": {
-            "name": "Fetch data",
-            "description": "Triggers an immediate data refresh for the targeted KEBA wallbox(es) instead of waiting for the next polling interval. If no target is specified, all configured wallboxes are refreshed."
-        }
     }
 }

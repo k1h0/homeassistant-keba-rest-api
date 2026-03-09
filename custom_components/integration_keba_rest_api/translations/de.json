@@ -1,0 +1,21 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "description": "Wenn Sie Hilfe bei der Konfiguration benoetigen, sehen Sie hier nach: https://github.com/ludeeus/integration_keba_rest_api",
+                "data": {
+                    "username": "Username",
+                    "password": "Password"
+                }
+            }
+        },
+        "error": {
+            "auth": "Username/Password ist falsch.",
+            "connection": "Verbindung zum Server nicht moeglich.",
+            "unknown": "Unbekannter Fehler aufgetreten."
+        },
+        "abort": {
+            "already_configured": "Dieser Eintrag ist bereits konfiguriert."
+        }
+    }
+}
