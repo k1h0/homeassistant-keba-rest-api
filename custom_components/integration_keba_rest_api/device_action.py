@@ -24,39 +24,10 @@ async def async_get_actions(hass: HomeAssistant, device_id: str) -> List[Dict[st
     device = dr.async_get(hass).async_get(device_id)
     if not device:
         return []
-
+    # Only offer the action for config entries the device is actually
+    # registered with by the device registry. Do not attempt fallbacks.
     actions: List[Dict[str, Any]] = []
-
-    # Determine which config entry(ies) this device belongs to. Prefer the
-    # device.registry's recorded config_entries, but fall back to resolving
-    # via the device identifiers (e.g. the wallbox serial) when empty. This
-    # allows offering device actions for wallbox devices that are not
-    # directly linked to the config entry in some setups.
-    entry_ids: set[str] = set(device.config_entries)
-
-    if not entry_ids:
-        # Look for identifiers owned by this integration and try to match
-        # them against the coordinator data of each config entry.
-        for ident in device.identifiers:
-            if not isinstance(ident, tuple) or len(ident) != 2:
-                continue
-            ident_domain, ident_value = ident
-            if ident_domain != DOMAIN:
-                continue
-
-            # Treat identifier value as possible wallbox serial and check
-            # all config entries for this integration to see which one
-            # knows about that serial.
-            for entry in hass.config_entries.async_entries(DOMAIN):
-                runtime = getattr(entry, "runtime_data", None)
-                coordinator = getattr(runtime, "coordinator", None) if runtime else None
-                if not coordinator or not getattr(coordinator, "data", None):
-                    continue
-                if ident_value in coordinator.data:
-                    entry_ids.add(entry.entry_id)
-
-    # Offer the fetch_data action for each discovered config entry
-    for entry_id in entry_ids:
+    for entry_id in device.config_entries:
         actions.append(
             {
                 "domain": DOMAIN,
@@ -76,12 +47,24 @@ async def async_get_action_capabilities(hass: HomeAssistant, config: Dict[str, A
 
 async def async_call_action(hass: HomeAssistant, config: Dict[str, Any], variables: Dict[str, Any]) -> None:
     """Execute the action by calling the integration service."""
+    # Prefer the provided config entry id. If missing, try to resolve from
+    # the device registry entry. Do not use a global/integration-level
+    # fallback — only update the coordinator for the related config entry.
+    entry_id = config.get("entry_id")
     device_id = config.get("device_id")
-    # Device actions should call the integration service; the service
-    # already supports a `device_id` target.
-    await hass.services.async_call(
-        DOMAIN,
-        ACTION_FETCH_DATA,
-        {"device_id": device_id},
-        blocking=True,
-    )
+    if not entry_id and device_id:
+        device = dr.async_get(hass).async_get(device_id)
+        if device and device.config_entries:
+            entry_id = next(iter(device.config_entries))
+
+    if not entry_id:
+        return
+
+    entry = hass.config_entries.async_get_entry(entry_id)
+    if not entry:
+        return
+
+    runtime = getattr(entry, "runtime_data", None)
+    coordinator = getattr(runtime, "coordinator", None) if runtime else None
+    if coordinator:
+        await coordinator.async_request_refresh()
