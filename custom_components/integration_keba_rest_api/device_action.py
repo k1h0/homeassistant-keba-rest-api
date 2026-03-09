@@ -26,8 +26,37 @@ async def async_get_actions(hass: HomeAssistant, device_id: str) -> List[Dict[st
         return []
 
     actions: List[Dict[str, Any]] = []
-    # Offer the action for each config entry the device belongs to
-    for entry_id in device.config_entries:
+
+    # Determine which config entry(ies) this device belongs to. Prefer the
+    # device.registry's recorded config_entries, but fall back to resolving
+    # via the device identifiers (e.g. the wallbox serial) when empty. This
+    # allows offering device actions for wallbox devices that are not
+    # directly linked to the config entry in some setups.
+    entry_ids: set[str] = set(device.config_entries)
+
+    if not entry_ids:
+        # Look for identifiers owned by this integration and try to match
+        # them against the coordinator data of each config entry.
+        for ident in device.identifiers:
+            if not isinstance(ident, tuple) or len(ident) != 2:
+                continue
+            ident_domain, ident_value = ident
+            if ident_domain != DOMAIN:
+                continue
+
+            # Treat identifier value as possible wallbox serial and check
+            # all config entries for this integration to see which one
+            # knows about that serial.
+            for entry in hass.config_entries.async_entries(DOMAIN):
+                runtime = getattr(entry, "runtime_data", None)
+                coordinator = getattr(runtime, "coordinator", None) if runtime else None
+                if not coordinator or not getattr(coordinator, "data", None):
+                    continue
+                if ident_value in coordinator.data:
+                    entry_ids.add(entry.entry_id)
+
+    # Offer the fetch_data action for each discovered config entry
+    for entry_id in entry_ids:
         actions.append(
             {
                 "domain": DOMAIN,
