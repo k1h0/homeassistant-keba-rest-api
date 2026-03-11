@@ -1,0 +1,7 @@
+fetch_data:
+  name: Fetch Wallbox Data
+  description: Trigger an immediate data refresh for the targeted wallbox by refreshing its data coordinator.
+  fields:
+    entry_id:
+      description: Optional config entry id to target. Required if multiple entries are configured.
+      example: 01K65NKFESKBQZ78PBW6V9BCCX
