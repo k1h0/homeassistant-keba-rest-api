@@ -19,7 +19,7 @@ from homeassistant.const import (  # type: ignore[import]
 )
 from homeassistant.helpers.device_registry import DeviceInfo  # type: ignore[import]
 
-from .const import DOMAIN
+from .const import DOMAIN, LOGGER
 from .entity import KebaRestIntegrationEntity
 
 if TYPE_CHECKING:  # isort: skip
@@ -102,9 +102,8 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the sensor platform."""
+    LOGGER.debug("Setting up sensor platform for entry %s", entry.entry_id)
     coordinator = entry.runtime_data.coordinator
-    # ensure initial refresh already passiert (wenn nicht an anderer Stelle gemacht)
-    await coordinator.async_config_entry_first_refresh()
 
     # Create sensors per wallbox serial using typed descriptions
     entities: list[WallboxSensor] = [
@@ -118,6 +117,9 @@ async def async_setup_entry(
         for descr in SENSOR_DEFINITIONS.values()
     ]
 
+    LOGGER.debug(
+        "Adding %d sensor entities for entry %s", len(entities), entry.entry_id
+    )
     async_add_entities(entities)
     # Listen for new wallboxes and add sensors dynamically
     known = set(coordinator.data)

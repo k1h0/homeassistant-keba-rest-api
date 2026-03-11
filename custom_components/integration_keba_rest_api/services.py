@@ -3,20 +3,17 @@
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING
 
 import voluptuous as vol
 
-from .const import DOMAIN
+from .const import DOMAIN, LOGGER
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant, ServiceCall
 
     from .data import KebaRestIntegrationConfigEntry
-
-_LOGGER = logging.getLogger(__name__)
 
 FETCH_DATA_SERVICE_SCHEMA = vol.Schema(
     {
@@ -37,7 +34,7 @@ def _resolve_target(
     if target_entry_id:
         target_entry = entries.get(target_entry_id)
         if target_entry is None:
-            _LOGGER.error(
+            LOGGER.error(
                 "Keba service: unknown entry_id %s",
                 target_entry_id,
             )
@@ -45,7 +42,7 @@ def _resolve_target(
         return target_entry_id, target_entry
 
     if len(entries) != 1:
-        _LOGGER.error(
+        LOGGER.error(
             "Keba service: multiple entries configured; specify entry_id",
         )
         return None
@@ -67,13 +64,13 @@ async def async_handle_fetch_data(call: ServiceCall) -> None:
     runtime = entry.runtime_data if hasattr(entry, "runtime_data") else None
     coordinator = runtime.coordinator if runtime is not None else None
     if not coordinator:
-        _LOGGER.error(
+        LOGGER.error(
             "Keba fetch_data: no coordinator found for entry %s",
             target_entry_id,
         )
         return
 
-    _LOGGER.debug(
+    LOGGER.debug(
         "Keba fetch_data: triggering coordinator refresh for entry %s",
         target_entry_id,
     )
@@ -89,7 +86,7 @@ def async_register_services(hass: HomeAssistant) -> None:
             async_handle_fetch_data,
             schema=FETCH_DATA_SERVICE_SCHEMA,
         )
-        _LOGGER.debug("Registered service %s.%s", DOMAIN, "fetch_data")
+        LOGGER.debug("Registered service %s.%s", DOMAIN, "fetch_data")
 
 
 def async_unregister_services(hass: HomeAssistant) -> None:
@@ -99,4 +96,4 @@ def async_unregister_services(hass: HomeAssistant) -> None:
     for service in ("fetch_data",):
         if hass.services.has_service(DOMAIN, service):
             hass.services.async_remove(DOMAIN, service)
-            _LOGGER.debug("Unregistered service %s.%s", DOMAIN, service)
+            LOGGER.debug("Unregistered service %s.%s", DOMAIN, service)

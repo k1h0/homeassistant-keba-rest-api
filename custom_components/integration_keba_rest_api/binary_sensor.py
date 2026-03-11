@@ -12,7 +12,7 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.helpers.device_registry import DeviceInfo  # type: ignore[import]
 
-from .const import DOMAIN
+from .const import DOMAIN, LOGGER
 from .entity import KebaRestIntegrationEntity
 
 if TYPE_CHECKING:
@@ -43,6 +43,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the binary_sensor platform."""
+    LOGGER.debug("Setting up binary_sensor platform for entry %s", entry.entry_id)
     coordinator = entry.runtime_data.coordinator
 
     # Create binary sensors for each wallbox serial
@@ -52,6 +53,9 @@ async def async_setup_entry(
         for descr in BINARY_SENSOR_DEFINITIONS.values()
     ]
 
+    LOGGER.debug(
+        "Adding %d binary sensor entities for entry %s", len(entities), entry.entry_id
+    )
     async_add_entities(entities)
 
     # Listen for new wallboxes and add binary sensors dynamically

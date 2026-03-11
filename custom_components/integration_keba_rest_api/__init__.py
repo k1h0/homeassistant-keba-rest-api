@@ -34,7 +34,6 @@ if TYPE_CHECKING:
 PLATFORMS: list[Platform] = [
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
-    Platform.SWITCH,
 ]
 
 
@@ -44,6 +43,7 @@ async def async_setup_entry(
     entry: KebaRestIntegrationConfigEntry,
 ) -> bool:
     """Set up this integration using UI."""
+    LOGGER.debug("Setting up config entry %s", entry.entry_id)
     coordinator = KebaDataUpdateCoordinator(
         hass=hass,
         logger=LOGGER,
@@ -68,6 +68,7 @@ async def async_setup_entry(
     # If we previously persisted a refresh token, use it and attempt to refresh
     rt = entry.data.get("refreshToken")
     if rt:
+        LOGGER.debug("Using persisted refresh token for entry %s", entry.entry_id)
         entry.runtime_data.client.set_refresh_token(rt)
         try:
             await entry.runtime_data.client.async_refresh_jwt()
@@ -80,6 +81,10 @@ async def async_setup_entry(
     else:
         # No persisted refresh token; perform a fresh login and
         # persist the refresh token
+        LOGGER.debug(
+            "No refresh token found, performing fresh login for entry %s",
+            entry.entry_id,
+        )
         try:
             tokens = await entry.runtime_data.client.async_login_jwt()
         except KebaRestIntegrationApiClientAuthenticationError as exc:
@@ -95,13 +100,17 @@ async def async_setup_entry(
             )
 
     # https://developers.home-assistant.io/docs/integration_fetching_data#coordinated-single-api-poll-for-data-for-all-entities
+    LOGGER.debug("Performing first coordinator refresh for entry %s", entry.entry_id)
     await coordinator.async_config_entry_first_refresh()
 
+    LOGGER.debug("Forwarding entry setups for platforms %s", PLATFORMS)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
+    LOGGER.debug("Registering services for entry %s", entry.entry_id)
     async_register_services(hass)
 
+    LOGGER.debug("Setup complete for entry %s", entry.entry_id)
     return True
 
 
