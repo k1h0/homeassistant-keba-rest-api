@@ -24,6 +24,7 @@ from .api import (
 from .const import DOMAIN, LOGGER
 from .coordinator import KebaDataUpdateCoordinator
 from .data import KebaRestIntegrationData
+from .services import async_register_services, async_unregister_services
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -31,7 +32,6 @@ if TYPE_CHECKING:
     from .data import KebaRestIntegrationConfigEntry
 
 PLATFORMS: list[Platform] = [
-    Platform.DEVICE_ACTION,
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
     Platform.SWITCH,
@@ -100,6 +100,8 @@ async def async_setup_entry(
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
+    async_register_services(hass)
+
     return True
 
 
@@ -108,7 +110,10 @@ async def async_unload_entry(
     entry: KebaRestIntegrationConfigEntry,
 ) -> bool:
     """Handle removal of an entry."""
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unloaded:
+        async_unregister_services(hass)
+    return unloaded
 
 
 async def async_reload_entry(
