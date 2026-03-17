@@ -17,5 +17,19 @@
         "abort": {
             "already_configured": "Dieser Eintrag ist bereits konfiguriert."
         }
+    },
+    "services": {
+        "fetch_data": {
+            "name": "Daten abrufen",
+            "description": "Aktualisiert die Daten fuer die ausgewaehlte Wallbox."
+        },
+        "start_charging": {
+            "name": "Ladevorgang starten",
+            "description": "Startet den Ladevorgang fuer die ausgewaehlte Wallbox."
+        },
+        "stop_charging": {
+            "name": "Ladevorgang stoppen",
+            "description": "Stoppt den Ladevorgang fuer die ausgewaehlte Wallbox."
+        }
     }
 }

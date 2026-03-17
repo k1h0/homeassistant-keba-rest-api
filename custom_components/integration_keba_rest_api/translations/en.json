@@ -17,5 +17,19 @@
         "abort": {
             "already_configured": "This entry is already configured."
         }
+    },
+    "services": {
+        "fetch_data": {
+            "name": "Fetch data",
+            "description": "Refresh data for the selected wallbox."
+        },
+        "start_charging": {
+            "name": "Start charging",
+            "description": "Start charging for the selected wallbox."
+        },
+        "stop_charging": {
+            "name": "Stop charging",
+            "description": "Stop charging for the selected wallbox."
+        }
     }
 }

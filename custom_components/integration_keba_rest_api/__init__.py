@@ -26,7 +26,6 @@ from .coordinator import KebaDataUpdateCoordinator
 from .data import KebaRestIntegrationData
 from .services import (
     async_register_wallbox_services,
-    async_unregister_wallbox_services,
 )
 
 if TYPE_CHECKING:
@@ -38,6 +37,12 @@ PLATFORMS: list[Platform] = [
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
 ]
+
+
+async def async_setup(hass: HomeAssistant, _config: dict) -> bool:
+    """Set up integration domain and register services once."""
+    async_register_wallbox_services(hass)
+    return True
 
 
 # https://developers.home-assistant.io/docs/config_entries_index/#setting-up-an-entry
@@ -102,16 +107,6 @@ async def async_setup_entry(
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
-    async_register_wallbox_services(hass, entry)
-
-    # Re-register when new wallboxes are discovered during coordinator updates
-    def _on_coordinator_update() -> None:
-        async_register_wallbox_services(hass, entry)
-
-    entry.async_on_unload(
-        entry.runtime_data.coordinator.async_add_listener(_on_coordinator_update)
-    )
-
     return True
 
 
@@ -120,10 +115,7 @@ async def async_unload_entry(
     entry: KebaRestIntegrationConfigEntry,
 ) -> bool:
     """Handle removal of an entry."""
-    unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    if unloaded:
-        async_unregister_wallbox_services(hass, entry)
-    return unloaded
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
 async def async_reload_entry(

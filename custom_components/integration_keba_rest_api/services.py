@@ -7,7 +7,6 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
-from homeassistant.config_entries import ConfigEntryState
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 
@@ -50,18 +49,24 @@ def _resolve_device_target(
         device_ids = _as_list(call.data["target"].get("device_id"))
 
     if not device_ids:
-        raise HomeAssistantError("No wallbox selected. Please select a device.")
+        msg = "No wallbox selected. Please select a device."
+        raise HomeAssistantError(msg)
 
     device_registry = dr.async_get(hass)
     device_entry = device_registry.async_get(device_ids[0])
     if device_entry is None:
-        raise HomeAssistantError("Selected wallbox device was not found.")
+        msg = "Selected wallbox device was not found."
+        raise HomeAssistantError(msg)
 
     entries_by_id: dict[str, KebaRestIntegrationConfigEntry] = {
         e.entry_id: e
         for e in hass.config_entries.async_entries(DOMAIN)
         if getattr(e, "runtime_data", None) is not None
     }
+
+    if not entries_by_id:
+        msg = "No loaded config entry available for this integration."
+        raise HomeAssistantError(msg)
 
     target_entry: KebaRestIntegrationConfigEntry | None = None
     for entry_id in device_entry.config_entries:
@@ -70,7 +75,8 @@ def _resolve_device_target(
             break
 
     if target_entry is None:
-        raise HomeAssistantError("Selected device is not linked to a loaded entry.")
+        msg = "Selected device is not linked to a loaded entry."
+        raise HomeAssistantError(msg)
 
     serial_candidates = [
         value
@@ -78,7 +84,8 @@ def _resolve_device_target(
         if identifier_domain == DOMAIN and value != target_entry.entry_id
     ]
     if not serial_candidates:
-        raise HomeAssistantError("Unable to determine wallbox serial number.")
+        msg = "Unable to determine wallbox serial number."
+        raise HomeAssistantError(msg)
 
     return target_entry, str(serial_candidates[0])
 
@@ -126,7 +133,6 @@ def _build_service_handlers(
 
 def async_register_wallbox_services(
     hass: HomeAssistant,
-    entry: KebaRestIntegrationConfigEntry,
 ) -> None:
     """
     Register integration-wide target-based services.
@@ -145,31 +151,4 @@ def async_register_wallbox_services(
             handler,
             schema=GLOBAL_SERVICE_SCHEMA,
         )
-        if service_name not in entry.runtime_data.wallbox_service_names:
-            entry.runtime_data.wallbox_service_names.append(service_name)
         _LOGGER.debug("Registered service %s.%s", DOMAIN, service_name)
-
-
-def async_unregister_wallbox_services(
-    hass: HomeAssistant,
-    entry: KebaRestIntegrationConfigEntry,
-) -> None:
-    """Unregister global services when the last config entry is unloaded."""
-    entry.runtime_data.wallbox_service_names.clear()
-
-    loaded_entries = [
-        e
-        for e in hass.config_entries.async_entries(DOMAIN)
-        if e.state is ConfigEntryState.LOADED
-    ]
-    if loaded_entries:
-        return
-
-    for service_name in (
-        SERVICE_FETCH_DATA,
-        SERVICE_START_CHARGING,
-        SERVICE_STOP_CHARGING,
-    ):
-        if hass.services.has_service(DOMAIN, service_name):
-            hass.services.async_remove(DOMAIN, service_name)
-            _LOGGER.debug("Unregistered service %s.%s", DOMAIN, service_name)
