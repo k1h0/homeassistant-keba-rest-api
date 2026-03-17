@@ -284,6 +284,9 @@ class KebaRestIntegrationApiClient:
 
             # No refresh available or not applicable; re-raise
             raise
+        except KebaRestIntegrationApiClientCommunicationError:
+            # Preserve communication errors so config flow can map to "connection"
+            raise
         except TypeError as exception:
             # Handle resolver TypeError (aiodns/pycares mismatch)
             msg = (
