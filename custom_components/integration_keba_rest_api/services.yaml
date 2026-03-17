@@ -1,7 +1,20 @@
-# Per-wallbox fetch_data services are registered dynamically at runtime.
-# For each configured wallbox a service named
-#   fetch_data_<wallbox_name>
-# is registered in this domain, where <wallbox_name> is derived from the
-# wallbox alias (if set) or from the serial number (e.g. fetch_data_wallbox123456).
-# These services take no parameters and immediately trigger a coordinator
-# refresh for the associated wallbox entry.
+fetch_data:
+	name: Fetch data
+	description: Refresh data for the selected wallbox.
+	target:
+		device:
+			integration: integration_keba_rest_api
+
+start_charging:
+	name: Start charging
+	description: Start charging for the selected wallbox.
+	target:
+		device:
+			integration: integration_keba_rest_api
+
+stop_charging:
+	name: Stop charging
+	description: Stop charging for the selected wallbox.
+	target:
+		device:
+			integration: integration_keba_rest_api
