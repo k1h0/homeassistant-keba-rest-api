@@ -1,7 +1,7 @@
-fetch_data:
-  name: Fetch Wallbox Data
-  description: Trigger an immediate data refresh for the targeted wallbox by refreshing its data coordinator.
-  fields:
-    entry_id:
-      description: Optional config entry id to target. Required if multiple entries are configured.
-      example: 01K65NKFESKBQZ78PBW6V9BCCX
+# Per-wallbox fetch_data services are registered dynamically at runtime.
+# For each configured wallbox a service named
+#   fetch_data_<wallbox_name>
+# is registered in this domain, where <wallbox_name> is derived from the
+# wallbox alias (if set) or from the serial number (e.g. fetch_data_wallbox123456).
+# These services take no parameters and immediately trigger a coordinator
+# refresh for the associated wallbox entry.

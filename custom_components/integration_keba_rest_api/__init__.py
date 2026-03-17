@@ -24,7 +24,10 @@ from .api import (
 from .const import DOMAIN, LOGGER
 from .coordinator import KebaDataUpdateCoordinator
 from .data import KebaRestIntegrationData
-from .services import async_register_services, async_unregister_services
+from .services import (
+    async_register_wallbox_services,
+    async_unregister_wallbox_services,
+)
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -100,7 +103,15 @@ async def async_setup_entry(
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
-    async_register_services(hass)
+    async_register_wallbox_services(hass, entry)
+
+    # Re-register when new wallboxes are discovered during coordinator updates
+    def _on_coordinator_update() -> None:
+        async_register_wallbox_services(hass, entry)
+
+    entry.async_on_unload(
+        entry.runtime_data.coordinator.async_add_listener(_on_coordinator_update)
+    )
 
     return True
 
@@ -112,7 +123,7 @@ async def async_unload_entry(
     """Handle removal of an entry."""
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
-        async_unregister_services(hass)
+        async_unregister_wallbox_services(hass, entry)
     return unloaded
 
 
