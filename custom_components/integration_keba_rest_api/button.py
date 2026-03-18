@@ -31,6 +31,7 @@ async def async_setup_entry(
 
     entities: list[WallboxActionButton] = []
     for serial in coordinator.data:
+        entities.append(WallboxActionButton(coordinator, serial, action="fetch_data"))
         entities.append(WallboxActionButton(coordinator, serial, action="start"))
         entities.append(WallboxActionButton(coordinator, serial, action="stop"))
 
@@ -46,6 +47,9 @@ async def async_setup_entry(
         if added:
             new_entities: list[WallboxActionButton] = []
             for serial in added:
+                new_entities.append(
+                    WallboxActionButton(coordinator, serial, action="fetch_data")
+                )
                 new_entities.append(
                     WallboxActionButton(coordinator, serial, action="start")
                 )
@@ -70,17 +74,23 @@ class WallboxActionButton(KebaRestIntegrationEntity, ButtonEntity):
         *,
         action: str,
     ) -> None:
-        """Initialize a start/stop charging button for one wallbox."""
+        """Initialize an action button for one wallbox."""
         super().__init__(coordinator)
         self.serial = serial
         self.action = action
 
-        is_start = action == "start"
-        self._attr_name = "Start Charging" if is_start else "Stop Charging"
-        self._attr_icon = (
-            "mdi:play-circle-outline" if is_start else "mdi:stop-circle-outline"
-        )
-        self._attr_unique_id = f"wallbox_{serial}_{action}_charging_button"
+        if action == "fetch_data":
+            self._attr_translation_key = "fetch_data"
+            self._attr_icon = "mdi:sync"
+            self._attr_unique_id = f"wallbox_{serial}_fetch_data_button"
+        elif action == "start":
+            self._attr_translation_key = "start_charging"
+            self._attr_icon = "mdi:play-circle-outline"
+            self._attr_unique_id = f"wallbox_{serial}_start_charging_button"
+        else:
+            self._attr_translation_key = "stop_charging"
+            self._attr_icon = "mdi:stop-circle-outline"
+            self._attr_unique_id = f"wallbox_{serial}_stop_charging_button"
 
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, serial)},
@@ -88,9 +98,13 @@ class WallboxActionButton(KebaRestIntegrationEntity, ButtonEntity):
         )
 
     async def async_press(self) -> None:
-        """Execute the start/stop charging action for this wallbox."""
+        """Execute the configured action for this wallbox."""
         client = self.coordinator.config_entry.runtime_data.client
         try:
+            if self.action == "fetch_data":
+                await self.coordinator.async_request_refresh()
+                return
+
             if self.action == "start":
                 await client.async_set_wallbox_start_charging(self.serial)
             else:

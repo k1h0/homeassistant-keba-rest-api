@@ -4,6 +4,7 @@
             "user": {
                 "description": "Wenn Sie Hilfe bei der Konfiguration benoetigen, sehen Sie hier nach: https://github.com/ludeeus/integration_keba_rest_api",
                 "data": {
+                    "url": "URL",
                     "username": "Username",
                     "password": "Password"
                 }
@@ -30,6 +31,19 @@
         "stop_charging": {
             "name": "Ladevorgang stoppen",
             "description": "Stoppt den Ladevorgang fuer die ausgewaehlte Wallbox."
+        }
+    },
+    "entity": {
+        "button": {
+            "fetch_data": {
+                "name": "Daten abrufen"
+            },
+            "start_charging": {
+                "name": "Ladevorgang starten"
+            },
+            "stop_charging": {
+                "name": "Ladevorgang stoppen"
+            }
         }
     }
 }

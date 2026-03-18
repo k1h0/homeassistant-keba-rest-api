@@ -131,7 +131,7 @@ class KebaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 # Update the existing config entry with the new password
                 # and refresh token
                 for entry in self._async_current_entries():
-                    if entry.unique_id == slugify(self._reauth_entry[CONF_USERNAME]):
+                    if entry.unique_id == slugify(self._reauth_entry[CONF_URL]):
                         new_data = {
                             **entry.data,
                             CONF_PASSWORD: user_input[CONF_PASSWORD],
