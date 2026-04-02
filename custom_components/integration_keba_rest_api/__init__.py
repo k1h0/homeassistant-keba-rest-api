@@ -71,6 +71,7 @@ async def async_setup_entry(
         ),
         integration=async_get_loaded_integration(hass, entry.domain),
         coordinator=coordinator,
+        options_at_setup=dict(entry.options),
     )
 
     # If we previously persisted a refresh token, use it and attempt to refresh
@@ -141,5 +142,7 @@ async def async_reload_entry(
     hass: HomeAssistant,
     entry: KebaRestIntegrationConfigEntry,
 ) -> None:
-    """Reload config entry."""
+    """Reload config entry only when options that affect runtime behavior changed."""
+    if entry.runtime_data.options_at_setup == dict(entry.options):
+        return
     await hass.config_entries.async_reload(entry.entry_id)

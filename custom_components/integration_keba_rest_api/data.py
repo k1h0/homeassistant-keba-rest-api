@@ -3,8 +3,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -24,3 +24,4 @@ class KebaRestIntegrationData:
     client: KebaRestIntegrationApiClient
     coordinator: KebaDataUpdateCoordinator
     integration: Integration
+    options_at_setup: dict[str, Any] = field(default_factory=dict)
