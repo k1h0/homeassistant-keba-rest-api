@@ -71,6 +71,7 @@ async def async_setup_entry(
         ),
         integration=async_get_loaded_integration(hass, entry.domain),
         coordinator=coordinator,
+        options_at_setup=dict(entry.options),
     )
 
     # If we previously persisted a refresh token, use it and attempt to refresh
@@ -79,9 +80,27 @@ async def async_setup_entry(
         entry.runtime_data.client.set_refresh_token(rt)
         try:
             await entry.runtime_data.client.async_refresh_jwt()
-        except KebaRestIntegrationApiClientAuthenticationError as exc:
-            # Refresh token is invalid -> require reauth
-            raise ConfigEntryAuthFailed(exc) from exc
+        except KebaRestIntegrationApiClientAuthenticationError:
+            # Refresh token is expired; fall back to re-login with stored credentials
+            LOGGER.debug(
+                "Refresh token expired at startup; re-logging in with stored credentials"
+            )
+            try:
+                tokens = await entry.runtime_data.client.async_login_jwt(
+                    username=entry.data[CONF_USERNAME],
+                    password=entry.data[CONF_PASSWORD],
+                )
+            except KebaRestIntegrationApiClientAuthenticationError as exc:
+                raise ConfigEntryAuthFailed(exc) from exc
+            except KebaRestIntegrationApiClientError as exc:
+                LOGGER.exception("Error while logging in during setup: %s", exc)
+                return False
+            # Persist the new refresh token
+            if tokens.get("refreshToken"):
+                hass.config_entries.async_update_entry(
+                    entry,
+                    data={**entry.data, "refreshToken": tokens.get("refreshToken")},
+                )
         except KebaRestIntegrationApiClientError as exc:
             LOGGER.exception("Error while refreshing token during setup: %s", exc)
             return False
@@ -123,5 +142,7 @@ async def async_reload_entry(
     hass: HomeAssistant,
     entry: KebaRestIntegrationConfigEntry,
 ) -> None:
-    """Reload config entry."""
+    """Reload config entry only when options that affect runtime behavior changed."""
+    if entry.runtime_data.options_at_setup == dict(entry.options):
+        return
     await hass.config_entries.async_reload(entry.entry_id)

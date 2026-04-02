@@ -266,11 +266,21 @@ class KebaRestIntegrationApiClient:
                 msg,
             ) from exception
         except KebaRestIntegrationApiClientAuthenticationError:
-            # If we have a refresh token, attempt to refresh and retry the request once
-            if include_auth and self._refreshToken:
-                await self.async_refresh_jwt()
+            if include_auth:
+                if self._refreshToken:
+                    try:
+                        await self.async_refresh_jwt()
+                    except KebaRestIntegrationApiClientAuthenticationError:
+                        # Refresh token is also expired; re-login with stored credentials
+                        await self.async_login_jwt()
+                elif self._username and self._password:
+                    # No refresh token; try a direct re-login
+                    await self.async_login_jwt()
+                else:
+                    # No credentials available to recover; re-raise
+                    raise
 
-                # Retry the original request with refreshed access token
+                # Retry the original request with the new access token
                 req_headers = dict(headers or {})
                 if self._accessToken and "Authorization" not in req_headers:
                     req_headers["Authorization"] = f"Bearer {self._accessToken}"
@@ -282,7 +292,7 @@ class KebaRestIntegrationApiClient:
                     data=data,
                 )
 
-            # No refresh available or not applicable; re-raise
+            # Auth not applicable for this request; re-raise
             raise
         except KebaRestIntegrationApiClientCommunicationError:
             # Preserve communication errors so config flow can map to "connection"
