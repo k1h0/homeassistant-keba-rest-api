@@ -59,4 +59,13 @@ class KebaDataUpdateCoordinator(DataUpdateCoordinator):
                     serial,
                 )
         self.logger.debug("Received updated values. data: %s", data)
+
+        # Persist the refresh token if it changed (e.g. after an automatic re-login)
+        new_rt = self.config_entry.runtime_data.client.get_refresh_token()
+        if new_rt and new_rt != self.config_entry.data.get("refreshToken"):
+            self.hass.config_entries.async_update_entry(
+                self.config_entry,
+                data={**self.config_entry.data, "refreshToken": new_rt},
+            )
+
         return data

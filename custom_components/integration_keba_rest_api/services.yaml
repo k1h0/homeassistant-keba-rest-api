@@ -1,20 +1,20 @@
 fetch_data:
-	name: Fetch data
-	description: Refresh data for the selected wallbox.
-	target:
-		device:
-			integration: integration_keba_rest_api
+  name: Fetch data
+  description: Refresh data for the selected wallbox.
+  target:
+    device:
+      integration: integration_keba_rest_api
 
 start_charging:
-	name: Start charging
-	description: Start charging for the selected wallbox.
-	target:
-		device:
-			integration: integration_keba_rest_api
+  name: Start charging
+  description: Start charging for the selected wallbox.
+  target:
+    device:
+      integration: integration_keba_rest_api
 
 stop_charging:
-	name: Stop charging
-	description: Stop charging for the selected wallbox.
-	target:
-		device:
-			integration: integration_keba_rest_api
+  name: Stop charging
+  description: Stop charging for the selected wallbox.
+  target:
+    device:
+      integration: integration_keba_rest_api
