@@ -3,7 +3,7 @@
 Custom integration to integrate integration_keba_rest_api with Home Assistant.
 
 For more details about this integration, please refer to
-https://github.com/ludeeus/integration_keba_rest_api
+https://github.com/k1h0/integration_keba_rest_api
 """
 
 from __future__ import annotations

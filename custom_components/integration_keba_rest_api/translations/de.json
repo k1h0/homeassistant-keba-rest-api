@@ -2,7 +2,7 @@
     "config": {
         "step": {
             "user": {
-                "description": "Wenn Sie Hilfe bei der Konfiguration benoetigen, sehen Sie hier nach: https://github.com/ludeeus/integration_keba_rest_api",
+                "description": "Wenn Sie Hilfe bei der Konfiguration benoetigen, sehen Sie hier nach: https://github.com/k1h0/integration_keba_rest_api",
                 "data": {
                     "url": "URL",
                     "username": "Username",
