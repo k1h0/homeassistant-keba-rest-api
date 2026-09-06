@@ -27,7 +27,7 @@ def _load_dotenv(path: Path) -> None:
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, value = line.split("=", 1)
-        os.environ.setdefault(key.strip(), value.strip().strip('"\''))
+        os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
 
 
 def _download(url: str, timeout: int) -> dict:
