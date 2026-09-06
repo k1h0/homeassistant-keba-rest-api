@@ -66,28 +66,48 @@ class KebaRestIntegrationApiClient:
         self._refreshToken: str | None = None
 
     async def async_get_all_wallboxes(self) -> Any:
-        """Get all wallboxes from the API using the access token if available."""
+        """
+        Get all wallboxes from the API using the access token if available.
+
+        API: GET /v2/wallboxes
+        Contract: docs/keba-rest-api/openapi_pretty.json
+        """
         return await self._api_wrapper(
             method="get",
             url=self._url + "/v2/wallboxes",
         )
 
     async def async_get_wallbox(self, serial_number: str) -> Any:
-        """Get complete wallbox information from the API using the access token."""
+        """
+        Get complete wallbox information from the API using the access token.
+
+        API: GET /v2/wallboxes/{serialNumber}
+        Contract: docs/keba-rest-api/openapi_pretty.json
+        """
         return await self._api_wrapper(
             method="get",
             url=self._url + "/v2/wallboxes/" + serial_number,
         )
 
     async def async_set_wallbox_start_charging(self, serial_number: str) -> Any:
-        """Set data on the API using the access token if available."""
+        """
+        Start charging on a wallbox.
+
+        API: POST /v2/wallboxes/{serialNumber}/start-charging
+        Contract: docs/keba-rest-api/openapi_pretty.json
+        """
         return await self._api_wrapper(
             method="post",
             url=self._url + "/v2/wallboxes/" + serial_number + "/start-charging",
         )
 
     async def async_set_wallbox_stop_charging(self, serial_number: str) -> Any:
-        """Set data on the API using the access token if available."""
+        """
+        Stop charging on a wallbox.
+
+        API: POST /v2/wallboxes/{serialNumber}/stop-charging
+        Contract: docs/keba-rest-api/openapi_pretty.json
+        """
         return await self._api_wrapper(
             method="post",
             url=self._url + "/v2/wallboxes/" + serial_number + "/stop-charging",
@@ -102,6 +122,9 @@ class KebaRestIntegrationApiClient:
         If username/password are not provided, falls back to values given at init.
         Raises KebaRestIntegrationApiClientAuthenticationError on auth failure.
         Returns a dict with 'accessToken' and 'refreshToken'.
+
+        API: POST /v2/jwt/login
+        Contract: docs/keba-rest-api/openapi_pretty.json
         """
         body = {
             "username": username or self._username,
@@ -139,6 +162,9 @@ class KebaRestIntegrationApiClient:
 
         Returns the new access token. Raises KebaRestIntegrationApiClientError
         if no refresh token is available or the refresh fails.
+
+        API: POST /v2/jwt/refresh
+        Contract: docs/keba-rest-api/openapi_pretty.json
         """
         if not self._refreshToken:
             msg = "No refresh token available"
@@ -271,7 +297,7 @@ class KebaRestIntegrationApiClient:
                     try:
                         await self.async_refresh_jwt()
                     except KebaRestIntegrationApiClientAuthenticationError:
-                        # Refresh token is also expired; re-login with stored credentials
+                        # Refresh token expired; re-login with stored credentials
                         await self.async_login_jwt()
                 elif self._username and self._password:
                     # No refresh token; try a direct re-login
