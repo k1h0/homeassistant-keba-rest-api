@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 from homeassistant.exceptions import ConfigEntryAuthFailed
@@ -12,6 +13,7 @@ from .api import (
     KebaRestIntegrationApiClientAuthenticationError,
     KebaRestIntegrationApiClientError,
 )
+from .data import KebaUpdateState
 
 if TYPE_CHECKING:
     from .data import KebaRestIntegrationConfigEntry
@@ -69,3 +71,55 @@ class KebaDataUpdateCoordinator(DataUpdateCoordinator):
             )
 
         return data
+
+
+class KebaUpdateCoordinator(DataUpdateCoordinator[KebaUpdateState]):
+    """Class to manage firmware update information."""
+
+    config_entry: KebaRestIntegrationConfigEntry
+
+    async def _async_update_data(self) -> KebaUpdateState:
+        """Return the current package version and cached portal information."""
+        client = self.config_entry.runtime_data.client
+        installed_version = await client.async_get_package_version()
+        state = KebaUpdateState(installed_version=installed_version)
+
+        try:
+            portal = await client.async_get_update_portal()
+        except KebaRestIntegrationApiClientError as exc:
+            self.logger.debug("No cached KEBA update information: %s", exc)
+            return state
+
+        if not isinstance(portal, dict):
+            return state
+
+        description = portal.get("description")
+        state.location = portal.get("location")
+        state.retrieve_date = portal.get("retrieveDate")
+        state.install_date = portal.get("installDate")
+        state.check_date = portal.get("checkDate")
+        state.retries = portal.get("retries")
+        state.retry_interval = portal.get("retryInterval")
+        state.signing_certificate = portal.get("signingCertificate")
+        state.signature = portal.get("signature")
+        state.description = description if isinstance(description, str) else None
+        state.latest_version = _extract_version(state.description)
+        return state
+
+    async def async_check_for_updates(self) -> None:
+        """Request a fresh portal check and refresh the cached update state."""
+        await self.config_entry.runtime_data.client.async_check_update_portal()
+        await self.async_request_refresh()
+
+
+_VERSION_PATTERN = re.compile(
+    r"(?<![A-Za-z0-9])v?(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)(?![A-Za-z0-9])"
+)
+
+
+def _extract_version(description: str | None) -> str | None:
+    """Extract a strictly delimited semantic-looking version from a description."""
+    if not description:
+        return None
+    match = _VERSION_PATTERN.search(description)
+    return match.group(1) if match else None

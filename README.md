@@ -21,7 +21,15 @@ Ladevorgaengen zu nutzen.
 - Authentifizierung per Username/Passwort mit JWT Login und Token-Refresh.
 - Abruf aller Wallboxen sowie detaillierter Wallbox-Daten.
 - Steuerung von Ladevorgaengen (Start/Stop), sofern von der Wallbox erlaubt.
+- Anzeige und Installation von Portal-Firmwareupdates als systemweite Update-Entity
+	inklusive Fortschritt und begrenzter Fehlerdiagnose ueber die KEBA-Update-Logs.
 - Home-Assistant-konformer Config Flow mit Reauth-Unterstuetzung.
+
+Firmwareupdates benoetigen die KEBA-Portalunterstuetzung. Die Entity kann eine
+Aktualisierung nur anbieten, wenn die Portalbeschreibung eine eindeutig
+erkennbare Versionsnummer enthaelt. Die vollstaendige Beschreibung wird als
+Release Notes angezeigt. Lokale `.keb`-Uploads und das automatische Entfernen
+von Update-Locks werden derzeit nicht unterstuetzt.
 
 ### Projektstruktur (Auszug)
 

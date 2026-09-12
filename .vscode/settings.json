@@ -1,5 +1,6 @@
 {
     "chat.tools.terminal.autoApprove": {
-        "./scripts/develop": true
+        "./scripts/develop": true,
+        "ruff": true
     }
 }

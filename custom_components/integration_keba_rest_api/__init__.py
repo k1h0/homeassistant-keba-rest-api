@@ -22,7 +22,7 @@ from .api import (
     KebaRestIntegrationApiClientError,
 )
 from .const import DOMAIN, LOGGER
-from .coordinator import KebaDataUpdateCoordinator
+from .coordinator import KebaDataUpdateCoordinator, KebaUpdateCoordinator
 from .data import KebaRestIntegrationData
 from .services import (
     async_register_wallbox_services,
@@ -37,6 +37,7 @@ PLATFORMS: list[Platform] = [
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
     Platform.BUTTON,
+    Platform.UPDATE,
 ]
 
 
@@ -62,6 +63,14 @@ async def async_setup_entry(
         ),
         always_update=True,
     )
+    update_coordinator = KebaUpdateCoordinator(
+        hass=hass,
+        logger=LOGGER,
+        name=f"{DOMAIN}_updates",
+        config_entry=entry,
+        update_interval=timedelta(hours=1),
+        always_update=False,
+    )
     entry.runtime_data = KebaRestIntegrationData(
         client=KebaRestIntegrationApiClient(
             url=entry.data[CONF_URL],
@@ -71,6 +80,7 @@ async def async_setup_entry(
         ),
         integration=async_get_loaded_integration(hass, entry.domain),
         coordinator=coordinator,
+        update_coordinator=update_coordinator,
         options_at_setup=dict(entry.options),
     )
 
@@ -83,7 +93,8 @@ async def async_setup_entry(
         except KebaRestIntegrationApiClientAuthenticationError:
             # Refresh token is expired; fall back to re-login with stored credentials
             LOGGER.debug(
-                "Refresh token expired at startup; re-logging in with stored credentials"
+                "Refresh token expired at startup; re-logging in with stored "
+                "credentials"
             )
             try:
                 tokens = await entry.runtime_data.client.async_login_jwt(
@@ -123,6 +134,11 @@ async def async_setup_entry(
 
     # https://developers.home-assistant.io/docs/integration_fetching_data#coordinated-single-api-poll-for-data-for-all-entities
     await coordinator.async_config_entry_first_refresh()
+    await update_coordinator.async_refresh()
+    try:
+        await update_coordinator.async_check_for_updates()
+    except KebaRestIntegrationApiClientError as exc:
+        LOGGER.debug("Unable to check the KEBA update portal: %s", exc)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))

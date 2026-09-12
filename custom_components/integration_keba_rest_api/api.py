@@ -3,8 +3,10 @@
 
 from __future__ import annotations
 
+import json
 import socket
 import ssl
+from http import HTTPStatus
 from typing import Any
 from urllib.parse import urlparse
 
@@ -113,6 +115,53 @@ class KebaRestIntegrationApiClient:
             url=self._url + "/v2/wallboxes/" + serial_number + "/stop-charging",
         )
 
+    async def async_get_package_version(self) -> str | None:
+        """Get the currently installed KEBA package version."""
+        response = await self._api_wrapper(
+            method="get",
+            url=self._url + "/package-version",
+        )
+        if isinstance(response, str):
+            return response
+        return None
+
+    async def async_check_update_portal(self) -> Any:
+        """Request a fresh update check from the KEBA update portal."""
+        return await self._api_wrapper(
+            method="post",
+            url=self._url + "/v2/updates/portal/check",
+        )
+
+    async def async_get_update_portal(self) -> Any:
+        """Get the cached update information from the KEBA update portal."""
+        return await self._api_wrapper(
+            method="get",
+            url=self._url + "/v2/updates/portal",
+        )
+
+    async def async_request_update(self, payload: dict[str, Any]) -> Any:
+        """Start installation of the update described by the portal payload."""
+        return await self._api_wrapper(
+            method="post",
+            url=self._url + "/v2/updates/request",
+            data=payload,
+        )
+
+    async def async_get_update_request_status(self) -> Any:
+        """Get the status of an update started through the request endpoint."""
+        return await self._api_wrapper(
+            method="get",
+            url=self._url + "/v2/updates/request/status",
+        )
+
+    async def async_get_update_log(self, count: int = 50) -> Any:
+        """Get a bounded number of update log lines, newest first."""
+        bounded_count = max(1, min(count, 200))
+        return await self._api_wrapper(
+            method="get",
+            url=f"{self._url}/v2/updates/log?count={bounded_count}",
+        )
+
     async def async_login_jwt(
         self, username: str | None = None, password: str | None = None
     ) -> dict:
@@ -209,7 +258,7 @@ class KebaRestIntegrationApiClient:
                     json=data,
                 )
                 _verify_response_or_raise(response)
-                return await response.json()
+                return await self._decode_response(response)
         except KebaRestIntegrationApiClientAuthenticationError:
             # Propagate authentication errors to be handled by caller
             raise
@@ -238,7 +287,7 @@ class KebaRestIntegrationApiClient:
                             ssl=False,
                         )
                         _verify_response_or_raise(response)
-                        return await response.json()
+                        return await self._decode_response(response)
                 except Exception as exc2:
                     msg2 = (
                         f"Error fetching information using insecure SSL mode - {exc2}"
@@ -252,6 +301,20 @@ class KebaRestIntegrationApiClient:
 
             # Re-raise anything else so outer handler can manage it
             raise
+
+    @staticmethod
+    async def _decode_response(response: aiohttp.ClientResponse) -> Any:
+        """Decode JSON responses while accepting empty successful responses."""
+        if response.status == HTTPStatus.NO_CONTENT:
+            return None
+
+        body = await response.read()
+        if not body:
+            return None
+        try:
+            return json.loads(body)
+        except json.JSONDecodeError:
+            return body.decode().strip()
 
     async def _api_wrapper(
         self,
