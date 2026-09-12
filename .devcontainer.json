@@ -2,18 +2,18 @@
     "name": "k1h0/homeassistant-keba-rest-api",
     "image": "mcr.microsoft.com/devcontainers/base:debian",
     "postCreateCommand": "scripts/setup",
-    "runArgs": [
-        "--network=host"
-    ],
-    // "forwardPorts": [
-    //     8123
+    // "runArgs": [
+    //     "--network=host"
     // ],
-    // "portsAttributes": {
-    //     "8123": {
-    //         "label": "Home Assistant",
-    //         "onAutoForward": "notify"
-    //     }
-    // },
+    "forwardPorts": [
+        8123
+    ],
+    "portsAttributes": {
+        "8123": {
+            "label": "Home Assistant",
+            "onAutoForward": "notify"
+        }
+    },
     "customizations": {
         "vscode": {
             "extensions": [
@@ -45,6 +45,18 @@
         },
         "ghcr.io/devcontainers-extra/features/apt-packages:1": {
             "packages": "ffmpeg,libturbojpeg0,libpcap-dev"
+        },
+        "ghcr.io/tailscale/codespace/tailscale": {
+            "version": "latest"
         }
-    }
+    },
+    // Wichtig für das Tailscale VPN-Tunneling (TUN-Device)
+    "runArgs": [
+        "--device=/dev/net/tun"
+    ],
+    "capAdd": [
+        "CAP_NET_ADMIN",
+        "CAP_MKNOD",
+        "CAP_NET_RAW"
+    ]
 }
