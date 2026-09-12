@@ -136,8 +136,8 @@ class KebaFirmwareUpdateEntity(CoordinatorEntity[KebaUpdateCoordinator], UpdateE
     async def async_install(
         self,
         version: str | None,
-        backup: bool,
-        **kwargs: Any,  # noqa: FBT001
+        backup: bool,  # noqa: FBT001
+        **kwargs: Any,
     ) -> None:
         """Install the currently offered portal update and monitor it."""
         del backup, kwargs

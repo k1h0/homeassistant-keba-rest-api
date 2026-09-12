@@ -167,8 +167,9 @@ class KebaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         # Attempt JWT login to verify credentials and return tokens
         return await client.async_login_jwt(username=username, password=password)
 
+    @staticmethod
     def async_get_options_flow(
-        self, config_entry: config_entries.ConfigEntry
+        config_entry: config_entries.ConfigEntry,
     ) -> config_entries.OptionsFlow:
         """Return options flow handler for this integration."""
         return OptionsFlowHandler(config_entry)
