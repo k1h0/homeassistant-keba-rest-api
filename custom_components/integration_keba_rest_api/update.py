@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
@@ -17,7 +18,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import KebaRestIntegrationApiClientError
-from .const import DOMAIN
+from .const import DOMAIN, LOGGER
 from .coordinator import KebaUpdateCoordinator
 from .data import KebaUpdateState
 
@@ -29,6 +30,8 @@ if TYPE_CHECKING:
 _POLL_INTERVAL = 5
 _MAX_INSTALL_SECONDS = 3600
 _LOG_COUNT = 50
+_STATUS_RETRY_LIMIT = 3
+_MAX_LOG_LENGTH = 8000
 _ERR_NO_UPDATE = "KEBA did not provide an installable update"
 _ERR_UPDATE_RUNNING = "A KEBA firmware update is already running"
 _ERR_VERSION_UNAVAILABLE = "The requested KEBA firmware version is unavailable"
@@ -164,35 +167,79 @@ class KebaFirmwareUpdateEntity(CoordinatorEntity[KebaUpdateCoordinator], UpdateE
             }.items()
             if value is not None
         }
+        LOGGER.info(
+            "Starting KEBA firmware update: installed=%s, target=%s, "
+            "location=%s, payload_fields=%s; waiting for update request "
+            "response while the wallbox processes the update",
+            state.installed_version,
+            state.latest_version,
+            _safe_location(state.location),
+            sorted(payload),
+        )
         client = self._entry.runtime_data.client
         try:
             await client.async_request_update(payload)
+            LOGGER.info("KEBA firmware update request accepted")
             await self._poll_installation()
         except HomeAssistantError:
             raise
         except KebaRestIntegrationApiClientError as exc:
             await self._load_diagnostic_logs()
-            raise HomeAssistantError(_ERR_UPDATE_FAILED) from exc
+            message = f"{_ERR_UPDATE_FAILED}: {exc}"
+            LOGGER.error("%s", message)
+            raise HomeAssistantError(message) from exc
 
     async def _poll_installation(self) -> None:
         """Poll the KEBA request status until it reaches a terminal state."""
         client = self._entry.runtime_data.client
         elapsed = 0
+        status_errors = 0
+        previous_status: str | None = None
         while elapsed < _MAX_INSTALL_SECONDS:
-            response = await client.async_get_update_request_status()
+            try:
+                response = await client.async_get_update_request_status()
+            except KebaRestIntegrationApiClientError as exc:
+                status_errors += 1
+                LOGGER.warning(
+                    "KEBA firmware status request failed (%s/%s): %s",
+                    status_errors,
+                    _STATUS_RETRY_LIMIT,
+                    exc,
+                )
+                if status_errors > _STATUS_RETRY_LIMIT:
+                    await self._load_diagnostic_logs()
+                    raise
+                await asyncio.sleep(_POLL_INTERVAL)
+                elapsed += _POLL_INTERVAL
+                continue
+
+            status_errors = 0
             self._apply_status(response)
             status = self._state.status
+            if status != previous_status:
+                LOGGER.info(
+                    "KEBA firmware update status: status=%s, percentage=%s, "
+                    "downloaded=%s, total=%s",
+                    status,
+                    self._state.update_percentage,
+                    self._state.length,
+                    self._state.size,
+                )
+                previous_status = status
             if status in _TERMINAL_STATUSES:
                 if status != "INSTALLED":
                     await self._load_diagnostic_logs()
                     message = f"KEBA update ended with {status}"
+                    LOGGER.error("%s", message)
                     raise HomeAssistantError(message)
                 await self.coordinator.async_request_refresh()
+                LOGGER.info("KEBA firmware update installed successfully")
                 return
             await asyncio.sleep(_POLL_INTERVAL)
             elapsed += _POLL_INTERVAL
 
         await self._load_diagnostic_logs()
+        LOGGER.error("%s after %s seconds", _ERR_UPDATE_TIMEOUT, elapsed)
         raise HomeAssistantError(_ERR_UPDATE_TIMEOUT)
 
     def _apply_status(self, response: Any) -> None:
@@ -221,8 +268,28 @@ class KebaFirmwareUpdateEntity(CoordinatorEntity[KebaUpdateCoordinator], UpdateE
                 _LOG_COUNT
             )
         except KebaRestIntegrationApiClientError:
+            LOGGER.warning("Unable to retrieve KEBA firmware diagnostic logs")
             return
         if isinstance(response, dict) and isinstance(response.get("msg"), str):
+            logs = _redact_logs(response["msg"])
             self.coordinator.async_set_updated_data(
-                replace(self._state, logs=response["msg"])
+                replace(self._state, logs=logs)
             )
+            LOGGER.debug("KEBA firmware diagnostic logs:\n%s", logs)
+
+
+def _safe_location(location: str | None) -> str | None:
+    """Return a location suitable for logs without query credentials."""
+    if not location:
+        return None
+    return location.split("?", maxsplit=1)[0]
+
+
+def _redact_logs(logs: str) -> str:
+    """Redact common secret-bearing fields from KEBA diagnostic logs."""
+    bounded_logs = logs[:_MAX_LOG_LENGTH]
+    return re.sub(
+        r"(?i)(authorization|password|token|signature|certificate)\s*[:=]\s*[^\s,;]+",
+        r"\1=<redacted>",
+        bounded_logs,
+    )

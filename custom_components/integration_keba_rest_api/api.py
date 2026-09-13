@@ -15,6 +15,7 @@ import async_timeout  # type: ignore[import]
 
 # Default request timeout in seconds
 _DEFAULT_REQUEST_TIMEOUT = 10
+_UPDATE_REQUEST_TIMEOUT = 3600
 
 
 class KebaRestIntegrationApiClientError(Exception):
@@ -145,6 +146,7 @@ class KebaRestIntegrationApiClient:
             method="post",
             url=self._url + "/v2/updates/request",
             data=payload,
+            timeout=_UPDATE_REQUEST_TIMEOUT,
         )
 
     async def async_get_update_request_status(self) -> Any:
@@ -242,6 +244,7 @@ class KebaRestIntegrationApiClient:
         *,
         headers: dict | None = None,
         data: dict | None = None,
+        timeout: float = _DEFAULT_REQUEST_TIMEOUT,  # noqa: ASYNC109
     ) -> Any:
         """
         Perform a single request.
@@ -250,7 +253,7 @@ class KebaRestIntegrationApiClient:
         verification failures (equivalent to `curl --insecure`).
         """
         try:
-            async with async_timeout.timeout(_DEFAULT_REQUEST_TIMEOUT):
+            async with async_timeout.timeout(timeout):
                 response = await self._session.request(
                     method=method,
                     url=url,
@@ -278,7 +281,7 @@ class KebaRestIntegrationApiClient:
 
             if is_cert_error:
                 try:
-                    async with async_timeout.timeout(_DEFAULT_REQUEST_TIMEOUT):
+                    async with async_timeout.timeout(timeout):
                         response = await self._session.request(
                             method=method,
                             url=url,
@@ -316,7 +319,7 @@ class KebaRestIntegrationApiClient:
         except json.JSONDecodeError:
             return body.decode().strip()
 
-    async def _api_wrapper(
+    async def _api_wrapper(  # noqa: PLR0913
         self,
         method: str,
         url: str,
@@ -324,6 +327,7 @@ class KebaRestIntegrationApiClient:
         data: dict | None = None,
         headers: dict | None = None,
         include_auth: bool = True,
+        timeout: float = _DEFAULT_REQUEST_TIMEOUT,  # noqa: ASYNC109
     ) -> Any:
         """
         Get information from the API.
@@ -347,6 +351,7 @@ class KebaRestIntegrationApiClient:
                 url,
                 headers=req_headers,
                 data=data,
+                timeout=timeout,
             )
 
         except TimeoutError as exception:
@@ -379,6 +384,7 @@ class KebaRestIntegrationApiClient:
                     url,
                     headers=req_headers,
                     data=data,
+                    timeout=timeout,
                 )
 
             # Auth not applicable for this request; re-raise
