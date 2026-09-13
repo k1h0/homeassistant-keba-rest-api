@@ -272,9 +272,7 @@ class KebaFirmwareUpdateEntity(CoordinatorEntity[KebaUpdateCoordinator], UpdateE
             return
         if isinstance(response, dict) and isinstance(response.get("msg"), str):
             logs = _redact_logs(response["msg"])
-            self.coordinator.async_set_updated_data(
-                replace(self._state, logs=logs)
-            )
+            self.coordinator.async_set_updated_data(replace(self._state, logs=logs))
             LOGGER.debug("KEBA firmware diagnostic logs:\n%s", logs)
 
 
