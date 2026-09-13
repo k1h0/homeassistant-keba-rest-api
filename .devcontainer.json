@@ -58,5 +58,8 @@
         "CAP_NET_ADMIN",
         "CAP_MKNOD",
         "CAP_NET_RAW"
-    ]
+    ],
+    "containerEnv": {
+        "OPENSSL_CONF": "${containerWorkspaceFolder}/.devcontainer-openssl-dev.cnf"
+    }
 }
