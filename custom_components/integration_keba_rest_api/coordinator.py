@@ -103,7 +103,7 @@ class KebaUpdateCoordinator(DataUpdateCoordinator[KebaUpdateState]):
         state.signing_certificate = portal.get("signingCertificate")
         state.signature = portal.get("signature")
         state.description = description if isinstance(description, str) else None
-        state.latest_version = _extract_version(state.description)
+        state.latest_version = _extract_version(state.description, installed_version)
         return state
 
     async def async_check_for_updates(self) -> None:
@@ -115,11 +115,39 @@ class KebaUpdateCoordinator(DataUpdateCoordinator[KebaUpdateState]):
 _VERSION_PATTERN = re.compile(
     r"(?<![A-Za-z0-9])v?(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)(?![A-Za-z0-9])"
 )
+_TARGET_VERSION_PATTERN = re.compile(
+    r"(?:nach\s+der\s+installation.*?softwareversion|"
+    r"(?:aktualisiert|aktualisierung|update).*?auf)\s+v?"
+    r"(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)",
+    re.IGNORECASE | re.DOTALL,
+)
 
 
-def _extract_version(description: str | None) -> str | None:
-    """Extract a strictly delimited semantic-looking version from a description."""
+def _extract_version(
+    description: str | None, installed_version: str | None = None
+) -> str | None:
+    """Extract the target version from a strictly delimited description."""
     if not description:
         return None
-    match = _VERSION_PATTERN.search(description)
-    return match.group(1) if match else None
+
+    target_matches = _TARGET_VERSION_PATTERN.findall(description)
+    candidates = target_matches or _VERSION_PATTERN.findall(description)
+    if not candidates:
+        return None
+
+    if installed_version:
+        installed_key = _version_key(installed_version)
+        newer = [
+            version for version in candidates if _version_key(version) > installed_key
+        ]
+        if newer:
+            return max(newer, key=_version_key)
+
+    return candidates[-1]
+
+
+def _version_key(version: str) -> tuple[int, int, int]:
+    """Return the numeric part used to compare firmware versions."""
+    major, minor, patch = version.lstrip("v").split(".", maxsplit=2)
+    patch = re.match(r"\d+", patch)
+    return int(major), int(minor), int(patch.group()) if patch else 0
