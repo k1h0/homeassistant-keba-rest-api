@@ -104,6 +104,8 @@ class KebaUpdateCoordinator(DataUpdateCoordinator[KebaUpdateState]):
         state.signature = portal.get("signature")
         state.description = description if isinstance(description, str) else None
         state.latest_version = _extract_version(state.description, installed_version)
+
+        self.logger.debug("KEBA update information: %s", state)
         return state
 
     async def async_check_for_updates(self) -> None:

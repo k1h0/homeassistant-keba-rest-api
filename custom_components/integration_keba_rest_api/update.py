@@ -27,6 +27,8 @@ if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
     from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+_INSTALL_RETRIES = 30
+_INSTALL_RETRY_INTERVAL = 10
 _POLL_INTERVAL = 5
 _MAX_INSTALL_SECONDS = 3600
 _LOG_COUNT = 50
@@ -156,14 +158,8 @@ class KebaFirmwareUpdateEntity(CoordinatorEntity[KebaUpdateCoordinator], UpdateE
             key: value
             for key, value in {
                 "location": state.location,
-                "retrieveDate": state.retrieve_date,
-                "installDate": state.install_date,
-                "checkDate": state.check_date,
-                "retries": state.retries,
-                "retryInterval": state.retry_interval,
-                "signingCertificate": state.signing_certificate,
-                "signature": state.signature,
-                "description": state.description,
+                "retries": _INSTALL_RETRIES,
+                "retryInterval": _INSTALL_RETRY_INTERVAL,
             }.items()
             if value is not None
         }
@@ -174,7 +170,7 @@ class KebaFirmwareUpdateEntity(CoordinatorEntity[KebaUpdateCoordinator], UpdateE
             state.installed_version,
             state.latest_version,
             _safe_location(state.location),
-            sorted(payload),
+            payload,
         )
         client = self._entry.runtime_data.client
         try:
@@ -226,9 +222,18 @@ class KebaFirmwareUpdateEntity(CoordinatorEntity[KebaUpdateCoordinator], UpdateE
                     self._state.size,
                 )
                 previous_status = status
+            else:
+                LOGGER.debug(
+                    "KEBA firmware update status: status=%s, percentage=%s, "
+                    "downloaded=%s, total=%s",
+                    status,
+                    self._state.update_percentage,
+                    self._state.length,
+                    self._state.size,
+                )
             if status in _TERMINAL_STATUSES:
+                await self._load_diagnostic_logs()
                 if status != "INSTALLED":
-                    await self._load_diagnostic_logs()
                     message = f"KEBA update ended with {status}"
                     LOGGER.error("%s", message)
                     raise HomeAssistantError(message)
