@@ -103,7 +103,9 @@ class KebaUpdateCoordinator(DataUpdateCoordinator[KebaUpdateState]):
         state.signing_certificate = portal.get("signingCertificate")
         state.signature = portal.get("signature")
         state.description = description if isinstance(description, str) else None
-        state.latest_version = _extract_version(state.description, installed_version)
+        state.latest_version = (
+            _extract_version(state.description, installed_version) or installed_version
+        )
 
         self.logger.debug("KEBA update information: %s", state)
         return state

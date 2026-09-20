@@ -90,11 +90,16 @@ class KebaFirmwareUpdateEntity(CoordinatorEntity[KebaUpdateCoordinator], UpdateE
     @property
     def _state(self) -> KebaUpdateState:
         """Return the coordinator state."""
+        LOGGER.debug("KEBA firmware update state requested: %s", self.coordinator.data)
         return self.coordinator.data or KebaUpdateState()
 
     @property
     def installed_version(self) -> str | None:
         """Return the installed package version."""
+        LOGGER.debug(
+            "KEBA firmware installed version requested: %s",
+            self._state.installed_version,
+        )
         return self._state.installed_version
 
     @property
