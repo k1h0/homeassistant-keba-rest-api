@@ -15,6 +15,8 @@ from .api import (
 )
 from .data import KebaUpdateState
 
+_NO_UPDATE_STATUS = 202
+
 if TYPE_CHECKING:
     from .data import KebaRestIntegrationConfigEntry
 
@@ -85,12 +87,18 @@ class KebaUpdateCoordinator(DataUpdateCoordinator[KebaUpdateState]):
         state = KebaUpdateState(installed_version=installed_version)
 
         try:
-            portal = await client.async_get_update_portal()
+            portal, portal_status = await client.async_get_update_portal_with_status()
         except KebaRestIntegrationApiClientError as exc:
             self.logger.debug("No cached KEBA update information: %s", exc)
             return state
 
         if not isinstance(portal, dict):
+            return state
+
+        if portal_status == _NO_UPDATE_STATUS:
+            state.check_date = portal.get("checkDate")
+            state.latest_version = installed_version
+            self.logger.debug("KEBA update portal reports no available update")
             return state
 
         description = portal.get("description")
@@ -104,7 +112,8 @@ class KebaUpdateCoordinator(DataUpdateCoordinator[KebaUpdateState]):
         state.signature = portal.get("signature")
         state.description = description if isinstance(description, str) else None
         state.latest_version = (
-            _extract_version(state.description, installed_version) or installed_version
+            _extract_version(state.description, installed_version)
+            or str(installed_version) + "+"
         )
 
         self.logger.debug("KEBA update information: %s", state)

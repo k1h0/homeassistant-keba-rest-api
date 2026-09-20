@@ -140,6 +140,14 @@ class KebaRestIntegrationApiClient:
             url=self._url + "/v2/updates/portal",
         )
 
+    async def async_get_update_portal_with_status(self) -> tuple[Any, int]:
+        """Get cached update information together with the HTTP status."""
+        return await self._api_wrapper(
+            method="get",
+            url=self._url + "/v2/updates/portal",
+            return_status=True,
+        )
+
     async def async_request_update(self, payload: dict[str, Any]) -> Any:
         """Start installation of the update described by the portal payload."""
         return await self._api_wrapper(
@@ -237,7 +245,7 @@ class KebaRestIntegrationApiClient:
         self._accessToken = access
         return access
 
-    async def _perform_request(
+    async def _perform_request(  # noqa: PLR0913
         self,
         method: str,
         url: str,
@@ -245,6 +253,7 @@ class KebaRestIntegrationApiClient:
         headers: dict | None = None,
         data: dict | None = None,
         timeout: float = _DEFAULT_REQUEST_TIMEOUT,  # noqa: ASYNC109
+        return_status: bool = False,
     ) -> Any:
         """
         Perform a single request.
@@ -261,7 +270,8 @@ class KebaRestIntegrationApiClient:
                     json=data,
                 )
                 _verify_response_or_raise(response)
-                return await self._decode_response(response)
+                body = await self._decode_response(response)
+                return (body, response.status) if return_status else body
         except KebaRestIntegrationApiClientAuthenticationError:
             # Propagate authentication errors to be handled by caller
             raise
@@ -290,7 +300,8 @@ class KebaRestIntegrationApiClient:
                             ssl=False,
                         )
                         _verify_response_or_raise(response)
-                        return await self._decode_response(response)
+                        body = await self._decode_response(response)
+                        return (body, response.status) if return_status else body
                 except Exception as exc2:
                     msg2 = (
                         f"Error fetching information using insecure SSL mode - {exc2}"
@@ -328,6 +339,7 @@ class KebaRestIntegrationApiClient:
         headers: dict | None = None,
         include_auth: bool = True,
         timeout: float = _DEFAULT_REQUEST_TIMEOUT,  # noqa: ASYNC109
+        return_status: bool = False,
     ) -> Any:
         """
         Get information from the API.
@@ -352,6 +364,7 @@ class KebaRestIntegrationApiClient:
                 headers=req_headers,
                 data=data,
                 timeout=timeout,
+                return_status=return_status,
             )
 
         except TimeoutError as exception:
@@ -385,6 +398,7 @@ class KebaRestIntegrationApiClient:
                     headers=req_headers,
                     data=data,
                     timeout=timeout,
+                    return_status=return_status,
                 )
 
             # Auth not applicable for this request; re-raise
